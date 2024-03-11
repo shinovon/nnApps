@@ -112,7 +112,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 
 	public void commandAction(Command c, Displayable d) {
 		if(c == List.SELECT_COMMAND) {
-			final JSONObject app = catalog.getObject(list.getSelectedIndex());
+			int i;
+			if((i = list.getSelectedIndex()) == -1) return;
+			final JSONObject app = catalog.getObject(i);
 			appForm = new Form(app.has("display") ? app.getString("display") : app.getString("suite"));
 			appForm.addCommand(backCmd);
 			appForm.setCommandListener(this);
@@ -172,6 +174,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(installing) return;
 			start(5);
 			return;
+		}
+		if(c == screenshotCmd) {
+			try {
+				// TODO
+				if(platformRequest(URL + appLaunchInfo[3] + "/" + ((ImageItem)item).getAltText()))
+					notifyDestroyed();
+			} catch (Exception e) {}
 		}
 	}
 
