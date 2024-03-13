@@ -1,6 +1,6 @@
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Enumeration;
+import java.io.InputStreamReader;
 
 import javax.microedition.io.Connector;
 import javax.microedition.io.HttpConnection;
@@ -28,23 +28,48 @@ import cc.nnproject.json.JSONObject;
 import midletintegration.MIDletIntegration;
 import ru.nnproject.installerext.InstallerExtension;
 
-public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable {
+public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
 
-	private static final Command exitCmd = new Command("Выход", Command.EXIT, 1);
-	private static final Command aboutCmd = new Command("О программе", Command.SCREEN, 2);
+	private static String[] L;
 	
-	private static final Command backCmd = new Command("Назад", Command.BACK, 1);
+	static {
+		lang = "ru";
+		loadLang();
+		exitCmd = new Command(L[Exit], Command.EXIT, 1);
+		aboutCmd = new Command(L[About], Command.SCREEN, 2);
+		backCmd = new Command(L[Back], Command.BACK, 1);
+		dlCmd = new Command(L[Download], Command.ITEM, 1);
+		startNoPatchCmd = new Command(L[LaunchCmd], Command.ITEM, 1);
+		uninstallCmd = new Command(L[Uninstall], Command.ITEM, 1);
+		screenshotCmd = new Command(L[ScreenshotCmd], Command.ITEM, 1);
+		cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
+		installExtCmd = new Command(L[Install], Command.OK, 1);
+	}
+
+	private static final Command exitCmd;
+	private static final Command aboutCmd;
 	
-	private static final Command dlCmd = new Command("Скачать", Command.ITEM, 1);
-	private static final Command startNoPatchCmd = new Command("Запустить", Command.ITEM, 1);
-	private static final Command uninstallCmd = new Command("Удалить", Command.ITEM, 1);
-	private static final Command screenshotCmd = new Command("Показать", Command.ITEM, 1);
+	private static final Command backCmd;
 	
-	private static final Command cancelCmd = new Command("Отмена", Command.CANCEL, 1);
-	private static final Command installExtCmd = new Command("Установить", Command.OK, 1);
+	private static final Command dlCmd;
+	private static final Command startNoPatchCmd;
+	private static final Command uninstallCmd;
+	private static final Command screenshotCmd;
+	
+	private static final Command cancelCmd;
+	private static final Command installExtCmd;
 	
 	private static final String URL = "http://nnm.nnchan.ru/nns/";
 	private static final String EXTSIS_URL = "http://nnm.nnchan.ru/nns/nninstallerext.sis";
+	
+	private static final int RUN_CATALOG = 1;
+	private static final int RUN_CATALOG_ICONS = 2;
+	private static final int RUN_APP = 3;
+	private static final int RUN_INSTALL = 4;
+	private static final int RUN_UNINSTALL = 5;
+	private static final int RUN_SCREENSHOTS = 6;
+	private static final int RUN_REFRESH = 7;
+	private static final int RUN_CATEGORIES = 8;
 	
 	private Display display;
 	private boolean started;
@@ -64,8 +89,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private int listImgHeight;
 	
 	private JSONArray catalog;
-	private JSONArray categories;
-	private JSONObject categoryObjects;
+	private String[] categories;
 	private String category;
 	
 	private JSONObject appJson;
@@ -77,7 +101,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private int run;
 	
-	private static String lang = "ru";
+	private static String lang;
 
 	public CatalogApp() {
 	}
@@ -90,15 +114,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 
 	protected void startApp() {
 		if(started) {
-			start(7);
+			start(RUN_REFRESH);
 			return;
 		}
 		started = true;
 		display = Display.getDisplay(this);
 		
 		Form form;
-		mainDisplay = form = new Form("nnhub");
-		form.append("Загрузка");
+		mainDisplay = form = new Form(L[0]);
+		form.append(L[Loading]);
 		display(form);
 		
 		try {
@@ -123,7 +147,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(p <= 0) p = 48;
 			listPlaceholderImg = resizeAppIcon(Image.createImage("/placeholder.png"), listImgHeight = p);
 		} catch (Exception e) {}
-		start(8);
+		start(RUN_CATEGORIES);
 	}
 
 	public void commandAction(Command c, Displayable d) {
@@ -135,14 +159,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appForm = new Form(app.has("name") ? app.getString("name") : app.getString("suite"));
 				appForm.addCommand(backCmd);
 				appForm.setCommandListener(this);
-				display(loadingAlert("Загрузка"), appForm);
-				start(3);
+				display(loadingAlert(L[Loading]), appForm);
+				start(RUN_APP);
 				return;
 			}
 			if(d == categoriesList) {
-				category = categories.getString(i);
-				display(loadingAlert("Загрузка"), appForm);
-				start(1);
+				category = categories[i];
+				display(loadingAlert(L[Loading]), appForm);
+				start(RUN_CATALOG);
 				return;
 			}
 		}
@@ -155,6 +179,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				display(catalogList);
 				return;
 			}
+			if(d == catalogList) {
+				catalogList = null;
+			}
 			display(mainDisplay);
 			return;
 		}
@@ -163,7 +190,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			return;
 		}
 		if(c == aboutCmd) {
-			Form form = new Form("О программе");
+			Form form = new Form(L[About]);
 			form.setCommandListener(this);
 			form.addCommand(backCmd);
 			form.append("ннстор");
@@ -190,7 +217,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			try {
 				if(installing) return;
 				if(symbianPatch) {
-					start(4);
+					start(RUN_INSTALL);
 					return;
 				}
 				if(platformRequest(appUrl))
@@ -203,13 +230,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				startApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert("Не удалось запустить приложение: " + e.toString()));
+				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
 			}
 			return;
 		}
 		if(c == uninstallCmd) {
 			if(installing) return;
-			start(5);
+			start(RUN_UNINSTALL);
 			return;
 		}
 		if(c == screenshotCmd) {
@@ -229,20 +256,20 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		System.out.println("run " + run);
 		switch(run) {
-		case 1: { // load catalog
+		case RUN_CATALOG: { // load catalog
 			try {
 				String category = this.category;
-				catalogList = new List(category == null ? "nnhub" : "nnhub - " + categoriesList.getString(categoriesList.getSelectedIndex()), Choice.IMPLICIT);
+				catalogList = new List(L[0] + " - " + categoriesList.getString(categoriesList.getSelectedIndex()), Choice.IMPLICIT);
 				if(mainDisplay == null) {
 					mainDisplay = catalogList;
 					catalogList.addCommand(aboutCmd);
-				}
-				catalogList.addCommand(category != null ? backCmd : exitCmd);
+					catalogList.addCommand(exitCmd);
+				} else catalogList.addCommand(backCmd);
 				catalogList.addCommand(List.SELECT_COMMAND);
 				catalogList.setCommandListener(this);
 				catalogList.setFitPolicy(Choice.TEXT_WRAP_ON);
 				
-				catalog = JSON.getArray(getUtf(URL + (category == null ? "catalog.php&lang=" + lang : "catalog.php?c=" + category + "&lang=" + lang)));
+				catalog = JSON.getArray(getUtf(URL + (category == null ? "catalog.php?lang=" + lang : "catalog.php?c=" + category + "&lang=" + lang)));
 				
 				int l = catalog.size();
 				int i = 0;
@@ -251,33 +278,33 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					String name = app.has("name") ? app.getString("name") : app.getString("suite");
 					String v;
 					if(symbianPatch && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
-						name += app.has("last") && !app.getString("last").equals(v) ? "\nобновление" : "\nустановлено";
+						name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 					}
 					catalogList.append(name, listPlaceholderImg);
 				}
 				display(catalogList);
-				start(2);
 				afterStart();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert("Не удалось загрузить каталог: " + e.toString()));
+				display(warningAlert(L[CatalogError] + ": " + e.toString()));
+				return;
 			}
-			return;
 		}
-		case 2: { // load catalog icons
+		case RUN_CATALOG_ICONS: { // load catalog icons
 			int i = -1;
 			int l = catalog.size();
+			Image img;
 			try {
 				while(++i < l) {
-					catalogList.set(i, catalogList.getString(i),
-							resizeAppIcon(getImage(URL + catalog.getObject(i).getString("id") + "/default.png"), listImgHeight));
+					if((img = getAppIcon(catalog.getObject(i).getString("id"), listImgHeight)) == null) continue;
+					catalogList.set(i, catalogList.getString(i), img);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 			return;
 		}
-		case 3: { // load app form
+		case RUN_APP: { // load app form
 			try {
 				int i;
 				JSONObject app = catalog.getObject(i = catalogList.getSelectedIndex());
@@ -295,12 +322,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appUrl = app.getNullableString("dl");
 				appLaunchInfo = new String[] {suite, vendor, uid, id};
 				
-				ImageItem img;
-				StringItem s;
+				appForm.append(appImageItem = new ImageItem(null, resizeAppIcon(catalogList.getImage(i), 58), 
+						Item.LAYOUT_2 | Item.LAYOUT_LEFT, null));
 				
-				appImageItem = img = new ImageItem(null, resizeAppIcon(catalogList.getImage(i), 58), 
-						Item.LAYOUT_2 | Item.LAYOUT_LEFT, null);
-				appForm.append(img);
+				StringItem s;
 				
 				s = new StringItem(null, app.has("name") ? app.getString("name") : app.getString("suite"));
 				s.setFont(Font.getFont(0, Font.STYLE_BOLD, Font.SIZE_LARGE));
@@ -312,7 +337,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				s.setLayout(Item.LAYOUT_2 | Item.LAYOUT_LEFT | Item.LAYOUT_TOP | Item.LAYOUT_NEWLINE_AFTER);
 				appForm.append(s);
 				Object d = app.getNullable("description");
-				String ds = "Нет описания";
+				String ds = L[NoDescription];
 				if(d != null) {
 					if(d instanceof String) ds = (String) d;
 					else if(d instanceof JSONObject) {
@@ -327,7 +352,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 				screenshotsIdx = appForm.append(s);
 				
-				if(app.has("screenshots")) start(6);
+				if(app.has("screenshots")) start(RUN_SCREENSHOTS);
 				
 				String last = app.getString("last");
 				if(symbianPatch) {
@@ -339,24 +364,24 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						boolean needUpdate = !ver.equals(last);
 						
 						if(needUpdate) {
-							s = new StringItem(null, "\nПоследняя версия: " + last + "\n");
+							s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n");
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							appForm.append(s);
 							
-							s = new StringItem(null, "Установлена: " + ver + "\n\n");
+							s = new StringItem(null, L[InstalledVersion] + ": " + ver + "\n\n");
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							appForm.append(s);
 						} else {
-							s = new StringItem(null, "\nВерсия: " + ver + "\n\n");
+							s = new StringItem(null, "\n" + L[Version] + ": " + ver + "\n\n");
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							appForm.append(s);
 						}
 						
 						if(appUrl != null && !ver.equals(last)) {
-							s = new StringItem(null, "Обновить", Item.BUTTON);
+							s = new StringItem(null, L[Update], Item.BUTTON);
 							s.setDefaultCommand(dlCmd);
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
@@ -364,27 +389,27 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							appForm.append(s);
 						}
 						
-						s = new StringItem(null, "Открыть", Item.BUTTON);
+						s = new StringItem(null, L[Launch], Item.BUTTON);
 						s.setDefaultCommand(startNoPatchCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 						appForm.append(s);
 						
-						s = new StringItem(null, "Удалить", Item.BUTTON);
+						s = new StringItem(null, L[Uninstall], Item.BUTTON);
 						s.setDefaultCommand(uninstallCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 						appForm.append(s);
 					} else {
-						s = new StringItem(null, "\nПоследняя версия: " + last + "\n\n");
+						s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 						appForm.append(s);
 						
 						if(appUrl != null) {
-							s = new StringItem(null, "Установить", Item.BUTTON);
+							s = new StringItem(null, L[Install], Item.BUTTON);
 							s.setDefaultCommand(dlCmd);
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
@@ -393,13 +418,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						}
 					}
 				} else {
-					s = new StringItem(null, "\nПоследняя версия: " + last + "\n\n");
+					s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
 					s.setFont(Font.getDefaultFont());
 					s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 					appForm.append(s);
 					
 					if(appUrl != null) {
-						s = new StringItem(null, "Скачать", Item.BUTTON);
+						s = new StringItem(null, L[Download], Item.BUTTON);
 						s.setDefaultCommand(dlCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
@@ -408,7 +433,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					}
 					
 					if(launchSupported) {
-						s = new StringItem(null, "Открыть", Item.BUTTON);
+						s = new StringItem(null, L[Launch], Item.BUTTON);
 						s.setDefaultCommand(startNoPatchCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
@@ -423,7 +448,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			display(appForm);
 			return;
 		}
-		case 4: { // install
+		case RUN_INSTALL: { // install
 			installing = true;
 			try {
 				int r = InstallerExtension.installApp(appUrl);
@@ -432,12 +457,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				refresh();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert("Не удалось вызвать установщик: " + e.toString()), appForm);
+				display(warningAlert(L[InstallerError] + ": " + e.toString()), appForm);
 			}
 			installing = false;
 			return;
 		}
-		case 5: { // uninstall
+		case RUN_UNINSTALL: { // uninstall
 			installing = true;
 			try {
 				String uid = InstallerExtension.getUid(appLaunchInfo[0], appLaunchInfo[1], null);
@@ -447,19 +472,19 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				refresh();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert("Не удалось вызвать установщик: " + e.toString()), appForm);
+				display(warningAlert(L[InstallerError] + ": " + e.toString()), appForm);
 			}
 			installing = false;
 			return;
 		}
-		case 6: { // load app screenshots
+		case RUN_SCREENSHOTS: { // load app screenshots
 			JSONArray a = appJson.getArray("screenshots");
 			String id = appLaunchInfo[3];
 			ImageItem img;
 			int i = 0;
 			int l = a.size();
 			try {
-				appImageItem.setImage(resizeAppIcon(getImage(URL + id + "/default.png"), 58));
+				appImageItem.setImage(getAppIcon(id, 58));
 				while(i < l) {
 					JSONArray o = a.getArray(i++);
 					img = new ImageItem(null, getImage(URL + id + "/" + o.getString(o.size() > 1 ? 1 : 0)), Item.LAYOUT_LEFT, o.getString(0));
@@ -470,12 +495,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			} catch (Exception e) {}
 			return;
 		}
-		case 7:
+		case RUN_REFRESH:
 			refresh();
 			return;
-		case 8: { // load categories
+		case RUN_CATEGORIES: { // load categories
 			try {
-				mainDisplay = categoriesList = new List("nnhub - категории", Choice.IMPLICIT);
+				mainDisplay = categoriesList = new List(L[0], Choice.IMPLICIT);
 				categoriesList.addCommand(aboutCmd);
 				categoriesList.addCommand(exitCmd);
 				categoriesList.addCommand(List.SELECT_COMMAND);
@@ -483,23 +508,32 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				
 				JSONArray j = JSON.getArray(getUtf(URL + "categories.json"));
 
-				JSONObject objs = categoryObjects = j.getObject(1);
-				JSONArray list = categories = j.getArray(0);
+				JSONObject objs = j.getObject(1);
+				JSONArray list = j.getArray(0);
 				int i = 0;
-				int l = list.size();
+				int l;
+				categories = new String[(l = list.size()) + 1];
+				
+				categoriesList.append(L[Catalog], null);
+				
 				while(i < l) {
 					String c = list.getString(i++);
-					Object n = objs.getObject(c).get("name");
+					JSONObject o = objs.getObject(c);
+					
+					if(o.getBoolean("sym", false) && !symbian) // symbian only
+						continue;
+					
+					Object n = o.get("name");
 					if(n instanceof JSONObject) {
 						n = ((JSONObject)n).has(lang) ? ((JSONObject)n).getString(lang) : ((JSONObject)n).getString("en");
 					}
-					categoriesList.append((String) n, null);
+					categories[categoriesList.append((String) n, null)] = c;
 				}
 				display(categoriesList);
 				afterStart();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert("Не удалось загрузить каталог: " + e.toString()));
+				display(warningAlert(L[CatalogError] + ": " + e.toString()));
 			}
 			return;
 		}
@@ -511,7 +545,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			warnShown = true;
 			Alert a = new Alert("");
 			a.setType(AlertType.INFO);
-			a.setString("Для полного функционала требуется установка SIS-пакета с дополнением для Java.");
+			a.setString(L[SymbianExtensionAlert]);
 			a.setCommandListener(this);
 			a.addCommand(cancelCmd);
 			a.addCommand(installExtCmd);
@@ -531,15 +565,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String name = app.has("name") ? app.getString("name") : app.getString("suite");
 				String v;
 				if(symbianPatch && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
-					name += app.has("last") && !app.getString("last").equals(v) ? "\nобновление" : "\nустановлено";
+					name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 				}
 				catalogList.set(i, name, catalogList.getImage(i));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-		synchronized(this) {
-			run = i;
 		}
 	}
 
@@ -587,6 +618,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 
 	private static Image resizeAppIcon(Image img, int p) {
+		if(img == null) return null;
 		return resize(img, p, p);
 	}
 	
@@ -631,6 +663,38 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		} else {
 			if(MIDletIntegration.startApp(this, suite, vendor, arg))
 				notifyDestroyed();
+		}
+	}
+
+	private static Image getAppIcon(String id, int size) throws IOException {
+		try {
+			return resizeAppIcon(getImage(URL + id + "/default.png"), size);
+		} catch (Exception e) {}
+		return null;
+	}
+	
+	private static void loadLang() {
+		try {
+			(L = new String[100])[0] = "nnhub";
+			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
+			StringBuffer s = new StringBuffer();
+			int c;
+			
+			int i = 1;
+			for(;;) {
+				c = r.read();
+				if(c <= 0) break;
+				if(c == '\r') continue;
+				if(c == '\n') {
+					L[i++] = s.toString();
+					s.setLength(0);
+					continue;
+				}
+				s.append((char) c);
+			}
+			r.close();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
