@@ -332,7 +332,7 @@ public class JSONArray extends AbstractJSON {
 	}
 	
 	public boolean has(Object object) {
-		return _indexOf(JSON.getJSON(object), 0) != -1;
+		return _indexOf(object, 0) != -1;
 	}
 	
 	public boolean has(int i) {
@@ -352,11 +352,11 @@ public class JSONArray extends AbstractJSON {
 	}
 	
 	public int indexOf(Object object) {
-		return _indexOf(JSON.getJSON(object), 0);
+		return _indexOf(object, 0);
 	}
 
 	public int indexOf(Object object, int index) {
-		return _indexOf(JSON.getJSON(object), index);
+		return _indexOf(object, index);
 	}
 	
 	public void clear() {
