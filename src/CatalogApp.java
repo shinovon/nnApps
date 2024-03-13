@@ -7,6 +7,7 @@ import javax.microedition.io.HttpConnection;
 import javax.microedition.lcdui.Alert;
 import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Choice;
+import javax.microedition.lcdui.ChoiceGroup;
 import javax.microedition.lcdui.Command;
 import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
@@ -21,6 +22,7 @@ import javax.microedition.lcdui.ItemCommandListener;
 import javax.microedition.lcdui.List;
 import javax.microedition.lcdui.StringItem;
 import javax.microedition.midlet.MIDlet;
+import javax.microedition.rms.RecordStore;
 
 import cc.nnproject.json.JSON;
 import cc.nnproject.json.JSONArray;
@@ -29,35 +31,6 @@ import midletintegration.MIDletIntegration;
 import ru.nnproject.installerext.InstallerExtension;
 
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
-
-	private static String[] L;
-	
-	static {
-		lang = "ru";
-		loadLang();
-		exitCmd = new Command(L[Exit], Command.EXIT, 1);
-		aboutCmd = new Command(L[About], Command.SCREEN, 2);
-		backCmd = new Command(L[Back], Command.BACK, 1);
-		dlCmd = new Command(L[Download], Command.ITEM, 1);
-		startNoPatchCmd = new Command(L[LaunchCmd], Command.ITEM, 1);
-		uninstallCmd = new Command(L[Uninstall], Command.ITEM, 1);
-		screenshotCmd = new Command(L[ScreenshotCmd], Command.ITEM, 1);
-		cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
-		installExtCmd = new Command(L[Install], Command.OK, 1);
-	}
-
-	private static final Command exitCmd;
-	private static final Command aboutCmd;
-	
-	private static final Command backCmd;
-	
-	private static final Command dlCmd;
-	private static final Command startNoPatchCmd;
-	private static final Command uninstallCmd;
-	private static final Command screenshotCmd;
-	
-	private static final Command cancelCmd;
-	private static final Command installExtCmd;
 	
 	private static final String URL = "http://nnm.nnchan.ru/nns/";
 	private static final String EXTSIS_URL = "http://nnm.nnchan.ru/nns/nninstallerext.sis";
@@ -70,14 +43,38 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final int RUN_SCREENSHOTS = 6;
 	private static final int RUN_REFRESH = 7;
 	private static final int RUN_CATEGORIES = 8;
+	private static final int RUN_EXIT_TIMEOUT = 9;
+
+	private static final String SETTINGS_RECORDNAME = "nnappssets";
+
+	private static String[] L;
+
+	private static Command exitCmd;
+	private static Command aboutCmd;
+	private static Command settingsCmd;
 	
-	private Display display;
+	private static Command backCmd;
+	
+	private static Command dlCmd;
+	private static Command launchCmd;
+	private static Command uninstallCmd;
+	private static Command screenshotCmd;
+	private static Command hyperlinkCmd;
+	
+	private static Command cancelCmd;
+	private static Command installExtCmd;
+	
+	private static Display display;
+	
 	private boolean started;
 
+	private Displayable rootScreen;
+	private List categoriesList;
 	private List catalogList;
 	private Form appForm;
-	private List categoriesList;
-	private Displayable mainDisplay;
+	
+	private Form settingsForm;
+	private ChoiceGroup langChoice;
 	
 	private boolean symbian;
 	private boolean symbian3;
@@ -101,7 +98,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private int run;
 	
-	private static String lang;
+	private static String lang = "ru";
 
 	public CatalogApp() {
 	}
@@ -120,10 +117,41 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		started = true;
 		display = Display.getDisplay(this);
 		
-		Form form;
-		mainDisplay = form = new Form(L[0]);
-		form.append(L[Loading]);
-		display(form);
+		try {
+			// load settings
+			RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, false);
+			JSONObject j = JSON.getObject(new String(r.getRecord(1), "UTF-8"));
+			r.closeRecordStore();
+			lang = j.getString("lang", lang);
+		} catch (Exception e) {}
+		
+		try {
+			loadLang();
+			
+			Form form;
+			rootScreen = form = new Form(L[0]);
+			form.append(L[Loading]);
+			display(form);
+
+			exitCmd = new Command(L[Exit], Command.EXIT, 1);
+			aboutCmd = new Command(L[About], Command.SCREEN, 3);
+			settingsCmd = new Command(L[Settings], Command.SCREEN, 2);
+			
+			backCmd = new Command(L[Back], Command.BACK, 1);
+			
+			dlCmd = new Command(L[Download], Command.ITEM, 1);
+			launchCmd = new Command(L[LaunchCmd], Command.ITEM, 1);
+			uninstallCmd = new Command(L[Uninstall], Command.ITEM, 1);
+			screenshotCmd = new Command(L[ScreenshotCmd], Command.ITEM, 1);
+			hyperlinkCmd = new Command(L[Open], Command.ITEM, 2);
+			
+			cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
+			installExtCmd = new Command(L[Install], Command.OK, 1);
+		} catch (Exception e) {
+			display(warningAlert(e.toString()));
+			start(RUN_EXIT_TIMEOUT);
+			return;
+		}
 		
 		try {
 			String platform;
@@ -171,6 +199,26 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			}
 		}
 		if(c == backCmd) {
+			if(d == settingsForm) { // save settings
+				lang = langChoice.getSelectedIndex() == 1 ? "en" : "ru";
+				try {
+					RecordStore.deleteRecordStore(SETTINGS_RECORDNAME);
+				} catch (Exception e) {
+				}
+				try {
+					JSONObject j = new JSONObject();
+					j.put("lang", lang);
+					byte[] b = j.toString().getBytes("UTF-8");
+					RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, true);
+					r.addRecord(b, 0, b.length);
+					r.closeRecordStore();
+				} catch (Exception e) {
+				}
+				display(rootScreen);
+				settingsForm = null;
+				langChoice = null;
+				return;
+			}
 			if(d == appForm) { // dispose app form
 				appImageItem = null;
 				appUrl = null;
@@ -182,32 +230,84 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(d == catalogList) {
 				catalogList = null;
 			}
-			display(mainDisplay);
+			display(rootScreen);
 			return;
 		}
 		if(c == exitCmd) {
 			notifyDestroyed();
 			return;
 		}
-		if(c == aboutCmd) {
-			Form form = new Form(L[About]);
-			form.setCommandListener(this);
-			form.addCommand(backCmd);
-			form.append("ннстор");
-			// TODO
-			display(form);
-			return;
-		}
 		if(c == cancelCmd) {
-			display(mainDisplay);
+			display(rootScreen);
 			return;
 		}
 		if(c == installExtCmd) {
 			try {
-				display(mainDisplay);
+				display(rootScreen);
 				if(platformRequest(EXTSIS_URL))
 					notifyDestroyed();
 			} catch (Exception e) {}
+			return;
+		}
+		if(c == launchCmd) {
+			try {
+				int i;
+				if((i = ((List)d).getSelectedIndex()) == -1) return;
+				final JSONObject app = catalog.getObject(i);
+				startApp(app.getString("suite"), app.getString("vendor"), app.getString("uid"));
+			} catch (Exception e) {
+				e.printStackTrace();
+				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
+			}
+			return;
+		}
+		if(c == settingsCmd) {
+			settingsForm = new Form(L[Settings]);
+			settingsForm.setCommandListener(this);
+			settingsForm.addCommand(backCmd);
+			langChoice = new ChoiceGroup(L[Language], Choice.POPUP, new String[] {"ru", "en"}, null);
+			langChoice.setSelectedIndex(lang.equals("en") ? 1 : 0, true);
+			settingsForm.append(langChoice);
+			display(settingsForm);
+			return;
+		}
+		if(c == aboutCmd) {
+			Form f = new Form(L[About]);
+			f.setCommandListener(this);
+			f.addCommand(backCmd);
+			
+			StringItem s;
+			s = new StringItem(null, "nnhub v" + this.getAppProperty("MIDlet-Version"));
+			s.setFont(Font.getFont(0, 0, Font.SIZE_LARGE));
+			s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_VCENTER);
+			f.append(s);
+			s = new StringItem(null, "что-то\n\n");
+			s.setFont(Font.getDefaultFont());
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			f.append(s);
+			s = new StringItem("Разработал", "shinovon");
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			f.append(s);
+			s = new StringItem("Сайт", "nnp.nnchan.ru", Item.HYPERLINK);
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			s.setDefaultCommand(hyperlinkCmd);
+			s.setItemCommandListener(this);
+			f.append(s);
+			s = new StringItem("Донат", "boosty.to/nnproject/donate", Item.HYPERLINK);
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			s.setDefaultCommand(hyperlinkCmd);
+			s.setItemCommandListener(this);
+			f.append(s);
+			s = new StringItem("Чат", "t.me/nnmidletschat", Item.HYPERLINK);
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			s.setDefaultCommand(hyperlinkCmd);
+			s.setItemCommandListener(this);
+			f.append(s);
+			s = new StringItem(null, "\n\nвыф тв\n292 labs");
+			s.setFont(Font.getDefaultFont());
+			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
+			f.append(s);
+			display(f);
 			return;
 		}
 	}
@@ -225,7 +325,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			} catch (Exception e) {}
 			return;
 		}
-		if(c == startNoPatchCmd) {
+		if(c == launchCmd) {
 			try {
 				startApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
 			} catch (Exception e) {
@@ -260,11 +360,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			try {
 				String category = this.category;
 				catalogList = new List(L[0] + " - " + categoriesList.getString(categoriesList.getSelectedIndex()), Choice.IMPLICIT);
-				if(mainDisplay == null) {
-					mainDisplay = catalogList;
+				if(rootScreen == null) {
+					rootScreen = catalogList;
 					catalogList.addCommand(aboutCmd);
 					catalogList.addCommand(exitCmd);
 				} else catalogList.addCommand(backCmd);
+				catalogList.addCommand(launchCmd);
 				catalogList.addCommand(List.SELECT_COMMAND);
 				catalogList.setCommandListener(this);
 				catalogList.setFitPolicy(Choice.TEXT_WRAP_ON);
@@ -390,7 +491,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						}
 						
 						s = new StringItem(null, L[Launch], Item.BUTTON);
-						s.setDefaultCommand(startNoPatchCmd);
+						s.setDefaultCommand(launchCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
@@ -434,7 +535,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					
 					if(launchSupported) {
 						s = new StringItem(null, L[Launch], Item.BUTTON);
-						s.setDefaultCommand(startNoPatchCmd);
+						s.setDefaultCommand(launchCmd);
 						s.setItemCommandListener(CatalogApp.this);
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
@@ -500,8 +601,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			return;
 		case RUN_CATEGORIES: { // load categories
 			try {
-				mainDisplay = categoriesList = new List(L[0], Choice.IMPLICIT);
+				rootScreen = categoriesList = new List(L[0], Choice.IMPLICIT);
 				categoriesList.addCommand(aboutCmd);
+				categoriesList.addCommand(settingsCmd);
 				categoriesList.addCommand(exitCmd);
 				categoriesList.addCommand(List.SELECT_COMMAND);
 				categoriesList.setCommandListener(this);
@@ -537,6 +639,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			}
 			return;
 		}
+		case RUN_EXIT_TIMEOUT:
+			try {
+				Thread.sleep(5000);
+			} catch (Exception e) {}
+			notifyDestroyed();
+			return;
 		}
 	}
 	
@@ -554,7 +662,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	private void refresh() {
-		if(catalogList == null) return;
+		if(catalogList == null || appLaunchInfo == null) return;
 		int i = -1;
 		int l = catalog.size();
 		try {
@@ -595,7 +703,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private void display(Displayable d) {
 		if(d instanceof Alert) {
 			Displayable c;
-			display.setCurrent((Alert) d, (c = display.getCurrent()) instanceof Alert ? mainDisplay : c);
+			display.setCurrent((Alert) d, (c = display.getCurrent()) instanceof Alert ? rootScreen : c);
 			return;
 		}
 		display.setCurrent(d);

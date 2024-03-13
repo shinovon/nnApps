@@ -22,4 +22,7 @@ public interface LangConstants {
 	static final int NoDescription = 21;
 	static final int updateAvailable = 22;
 	static final int installed = 23;
+	static final int Open = 24;
+	static final int Settings = 25;
+	static final int Language = 26;
 }
