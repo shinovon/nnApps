@@ -1,9 +1,15 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.util.Hashtable;
+import java.util.Vector;
 
 import javax.microedition.io.Connector;
+import javax.microedition.io.Datagram;
+import javax.microedition.io.DatagramConnection;
 import javax.microedition.io.HttpConnection;
+import javax.microedition.io.PushRegistry;
 import javax.microedition.lcdui.Alert;
 import javax.microedition.lcdui.AlertType;
 import javax.microedition.lcdui.Choice;
@@ -24,10 +30,6 @@ import javax.microedition.lcdui.StringItem;
 import javax.microedition.midlet.MIDlet;
 import javax.microedition.rms.RecordStore;
 
-import cc.nnproject.json.JSON;
-import cc.nnproject.json.JSONArray;
-import cc.nnproject.json.JSONObject;
-import midletintegration.MIDletIntegration;
 import ru.nnproject.installerext.InstallerExtension;
 
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
@@ -44,6 +46,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final int RUN_REFRESH = 7;
 	private static final int RUN_CATEGORIES = 8;
 	private static final int RUN_EXIT_TIMEOUT = 9;
+	
+	private static final String APIV = "&v=1";
 
 	private static final String SETTINGS_RECORDNAME = "nnappssets";
 
@@ -66,35 +70,35 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static Display display;
 	
-	private boolean started;
+	private static boolean started;
 
-	private Displayable rootScreen;
-	private List categoriesList;
-	private List catalogList;
-	private Form appForm;
+	private static Displayable rootScreen;
+	private static List categoriesList;
+	private static List catalogList;
+	private static Form appForm;
 	
-	private Form settingsForm;
-	private ChoiceGroup langChoice;
+	private static Form settingsForm;
+	private static ChoiceGroup langChoice;
 	
-	private boolean symbian;
-	private boolean symbian3;
-	private boolean symbianPatch;
-	private boolean launchSupported;
-	private boolean warnShown;
+	private static boolean symbian;
+	private static boolean symbian3;
+	private static boolean symbianPatch;
+	private static boolean launchSupported;
+	private static boolean warnShown;
 	
-	private Image listPlaceholderImg;
-	private int listImgHeight;
+	private static Image listPlaceholderImg;
+	private static int listImgHeight;
 	
-	private JSONArray catalog;
-	private String[] categories;
-	private String category;
+	private static JSONArray catalog;
+	private static String[] categories;
+	private static String category;
 	
-	private JSONObject appJson;
-	private ImageItem appImageItem;
-	private String appUrl;
-	private String[] appLaunchInfo;
-	private boolean installing;
-	private int screenshotsIdx;
+	private static JSONObject appJson;
+	private static ImageItem appImageItem;
+	private static String appUrl;
+	private static String[] appLaunchInfo;
+	private static boolean installing;
+	private static int screenshotsIdx;
 	
 	private int run;
 	
@@ -120,7 +124,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		try {
 			// load settings
 			RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, false);
-			JSONObject j = JSON.getObject(new String(r.getRecord(1), "UTF-8"));
+			JSONObject j = getObject(new String(r.getRecord(1), "UTF-8"));
 			r.closeRecordStore();
 			lang = j.getString("lang", lang);
 		} catch (Exception e) {}
@@ -166,8 +170,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(symbian) {
 				Class.forName("ru.nnproject.installerext.InstallerExtension");
 				System.out.println("ext found");
-				symbianPatch = true;
 				InstallerExtension.init();
+				symbianPatch = true;
 			}
 		} catch (Throwable e) {} 
 		try {
@@ -358,7 +362,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		switch(run) {
 		case RUN_CATALOG: { // load catalog
 			try {
-				String category = this.category;
+				String c = category;
 				catalogList = new List(L[0] + " - " + categoriesList.getString(categoriesList.getSelectedIndex()), Choice.IMPLICIT);
 				if(rootScreen == null) {
 					rootScreen = catalogList;
@@ -370,7 +374,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				catalogList.setCommandListener(this);
 				catalogList.setFitPolicy(Choice.TEXT_WRAP_ON);
 				
-				catalog = JSON.getArray(getUtf(URL + (category == null ? "catalog.php?lang=" + lang : "catalog.php?c=" + category + "&lang=" + lang)));
+				catalog = getArray(getUtf(URL + (c == null ? "catalog.php?lang=" + lang + APIV : "catalog.php?c=" + c + "&lang=" + lang + APIV)));
 				
 				int l = catalog.size();
 				int i = 0;
@@ -416,7 +420,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String vendor = app.getString("vendor");
 				String uid = app.getNullableString("uid");
 				
-				appJson = app = JSON.getObject(getUtf(URL + "app.php?id=" + id + "&lang=" + lang));
+				appJson = app = getObject(getUtf(URL + "app.php?id=" + id + "&lang=" + lang + APIV));
 				
 //				int type = app.getInt("type", 0);
 				
@@ -608,7 +612,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				categoriesList.addCommand(List.SELECT_COMMAND);
 				categoriesList.setCommandListener(this);
 				
-				JSONArray j = JSON.getArray(getUtf(URL + "categories.json"));
+				JSONArray j = getArray(getUtf(URL + "categories.json"));
 
 				JSONObject objs = j.getObject(1);
 				JSONArray list = j.getArray(0);
@@ -766,10 +770,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(platformRequest("nativeapp:application-uid=" + uid))
 				notifyDestroyed();
 		} else if(uid != null && symbian) {
-			if(MIDletIntegration.startAppWithAppUID(this, uid, arg))
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + uid + ";" + url(arg)))
 				notifyDestroyed();
 		} else {
-			if(MIDletIntegration.startApp(this, suite, vendor, arg))
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-name=" + url(suite) + ";midlet-vendor=" + url(vendor) + ";" + url(arg)))
 				notifyDestroyed();
 		}
 	}
@@ -814,7 +818,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		return Image.createImage(b, 0, b.length);
 	}
 	
-	public static String url(String url) {
+	static String url(String url) {
 		StringBuffer sb = new StringBuffer();
 		char[] chars = url.toCharArray();
 		for (int i = 0; i < chars.length; i++) {
@@ -1006,5 +1010,464 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			}
 		}
 	}
+	
+	// midletintegration
+	
+	private static final String JAVAAPP_PROTOCOL = "localapp://jam/launch?";
+	
+	private static int instances;
+	private static boolean receiving;
+	
+	/**
+	 * Checks if a MIDlet has received a new start request from another MIDlet<br>
+	 * Recommended to use in startApp() with "Nokia-MIDlet-Background-Event: pause" property in MANIFEST.MF<br>
+	 * After receiving a request, you should receive arguments from getLaunchCommand()
+	 * @see {@link #getLaunchCommand()}
+	 * @return true if new arguments have been received since the last check
+	 */
+	static boolean checkLaunch() {
+		if(receiving) return false;
+		try {
+			if(PushRegistry.listConnections(true).length > 0) {
+				return true;
+			}
+		} catch (Throwable e) {
+		}
+		if(System.getProperty("com.nokia.mid.cmdline.instance") == null) {
+			return false;
+		}
+		try {
+			int i = Integer.parseInt(System.getProperty("com.nokia.mid.cmdline.instance"));
+			if(i > instances) {
+				instances = i;
+				String cmd = System.getProperty("com.nokia.mid.cmdline");
+				return cmd != null && cmd.length() > 0;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
+	/**
+	 * Gets received command
+	 * 
+	 * @see {@link #checkLaunch()}
+	 * @see {@link java.lang.System#getProperty(String)}
+	 * @return Received command
+	 */
+	static String getLaunchCommand() {
+		receiving = true;
+		String args = null;
+		String[] arr = null;
+		try {
+			arr = PushRegistry.listConnections(true);
+		} catch (Throwable e) {
+		}
+		if(arr != null && arr.length > 0) {
+			try {
+				DatagramConnection conn = (DatagramConnection) Connector.open(arr[0]);
+				Datagram data = conn.newDatagram(conn.getMaximumLength());
+				conn.receive(data);
+				args = data.readUTF();
+				conn.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (Exception e) {
+			}
+		} else {
+			args = System.getProperty("com.nokia.mid.cmdline");
+		}
+		if("empty=1".equals(args)) {
+			args = "";
+		}
+		receiving = false;
+		return args;
+	}
+	
+	static Hashtable parseArgs(String str) {
+		if(str == null) {
+			return null;
+		}
+		Hashtable table = new Hashtable();
+		int idx = str.indexOf(';');
+		while (idx != -1) {
+			String arg = str.substring(0, idx);
+			int idx2 = arg.indexOf("=");
+			if(idx2 != -1) {
+				table.put(arg.substring(0, idx2).trim(), arg.substring(idx2 + 1));
+			} else {
+				table.put(arg.trim(), "");
+			}
+			str = str.substring(idx + 1);
+			idx = str.indexOf(';');
+		}
+		if(str.length() > 0) {
+			int idx2 = str.indexOf("=");
+			if(idx2 != -1) {
+				table.put(str.substring(0, idx2).trim(), str.substring(idx2 + 1));
+			} else {
+				table.put(str.trim(), "");
+			}
+		}
+		return table;
+	}
+	
+	static String decodeURL(String s) {
+		if(s == null) {
+			return null;
+		}
+		boolean needToChange = false;
+		int numChars = s.length();
+		StringBuffer sb = new StringBuffer(numChars > 500 ? numChars / 2 : numChars);
+		int i = 0;
+		char c;
+		byte[] bytes = null;
+		while (i < numChars) {
+			c = s.charAt(i);
+			switch (c) {
+			case '%':
+				try {
+					if (bytes == null)
+						bytes = new byte[(numChars - i) / 3];
+					int pos = 0;
+					while (((i + 2) < numChars) && (c == '%')) {
+						int v = Integer.parseInt(s.substring(i + 1, i + 3), 16);
+						if (v < 0)
+							throw new IllegalArgumentException();
+						bytes[pos++] = (byte) v;
+						i += 3;
+						if (i < numChars)
+							c = s.charAt(i);
+					}
+					if ((i < numChars) && (c == '%'))
+						throw new IllegalArgumentException();
+					sb.append(new String(bytes, 0, pos, "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					throw new IllegalArgumentException();
+				} catch (NumberFormatException e) {
+					throw new IllegalArgumentException();
+				}
+				needToChange = true;
+				break;
+			default:
+				sb.append(c);
+				i++;
+				break;
+			}
+		}
+		return (needToChange ? sb.toString() : s);
+	}
+	
+	// nnjson
+
+	// parse all nested elements once
+	static final boolean parse_members = false;
+	
+	// identation for formatting
+	static final String FORMAT_TAB = "  ";
+	
+	// used for storing nulls, get methods must return real null
+	static final Object json_null = new Object();
+	
+	static final Boolean TRUE = new Boolean(true);
+	static final Boolean FALSE = new Boolean(false);
+
+	static JSONObject getObject(String text) {
+		if (text == null || text.length() <= 1)
+			throw new RuntimeException("JSON: Empty text");
+		if (text.charAt(0) != '{')
+			throw new RuntimeException("JSON: Not JSON object");
+		return (JSONObject) parseJSON(text);
+	}
+
+	static JSONArray getArray(String text) {
+		if (text == null || text.length() <= 1)
+			throw new RuntimeException("JSON: Empty text");
+		if (text.charAt(0) != '[')
+			throw new RuntimeException("JSON: Not JSON array");
+		return (JSONArray) parseJSON(text);
+	}
+
+	static Object getJSON(Object obj) {
+		if (obj instanceof Hashtable) {
+			return new JSONObject((Hashtable) obj);
+		}
+		if (obj instanceof Vector) {
+			return new JSONArray((Vector) obj);
+		}
+		if (obj == null) {
+			return json_null;
+		}
+		return obj;
+	}
+
+	static Object parseJSON(String str) {
+		char first = str.charAt(0);
+		int length = str.length() - 1;
+		char last = str.charAt(length);
+		switch(first) {
+		case '"': { // string
+			if (last != '"')
+				throw new RuntimeException("JSON: Unexpected end of text");
+			char[] chars = str.substring(1, length).toCharArray();
+			str = null;
+			int l = chars.length;
+			StringBuffer sb = new StringBuffer();
+			int i = 0;
+			// parse escaped chars in string
+			loop: {
+				while (i < l) {
+					char c = chars[i];
+					switch (c) {
+					case '\\': {
+						next: {
+							replace: {
+								if (l < i + 1) {
+									sb.append(c);
+									break loop;
+								}
+								char c1 = chars[i + 1];
+								switch (c1) {
+								case 'u':
+									i+=2;
+									sb.append((char) Integer.parseInt(
+											new String(new char[] {chars[i++], chars[i++], chars[i++], chars[i++]}),
+											16));
+									break replace;
+								case 'x':
+									i+=2;
+									sb.append((char) Integer.parseInt(
+											new String(new char[] {chars[i++], chars[i++]}),
+											16));
+									break replace;
+								case 'n':
+									sb.append('\n');
+									i+=2;
+									break replace;
+								case 'r':
+									sb.append('\r');
+									i+=2;
+									break replace;
+								case 't':
+									sb.append('\t');
+									i+=2;
+									break replace;
+								case 'f':
+									sb.append('\f');
+									i+=2;
+									break replace;
+								case 'b':
+									sb.append('\b');
+									i+=2;
+									break replace;
+								case '\"':
+								case '\'':
+								case '\\':
+								case '/':
+									i+=2;
+									sb.append((char) c1);
+									break replace;
+								default:
+									break next;
+								}
+							}
+							break;
+						}
+						sb.append(c);
+						i++;
+						break;
+					}
+					default:
+						sb.append(c);
+						i++;
+					}
+				}
+			}
+			str = sb.toString();
+			sb = null;
+			return str;
+		}
+		case '{': // JSON object or array
+		case '[': {
+			boolean object = first == '{';
+			if (object ? last != '}' : last != ']')
+				throw new RuntimeException("JSON: Unexpected end of text");
+			int brackets = 0;
+			int i = 1;
+			char nextDelimiter = object ? ':' : ',';
+			boolean escape = false;
+			String key = null;
+			Object res = object ? (Object) new JSONObject() : (Object) new JSONArray();
+			
+			for (int splIndex; i < length; i = splIndex + 1) {
+				// skip all spaces
+				for (; i < length - 1 && str.charAt(i) <= ' '; i++);
+
+				splIndex = i;
+				boolean quote = false;
+				for (; splIndex < length && (quote || brackets > 0 || str.charAt(splIndex) != nextDelimiter); splIndex++) {
+					char c = str.charAt(splIndex);
+					if (!escape) {
+						if (c == '\\') {
+							escape = true;
+						} else if (c == '"') {
+							quote = !quote;
+						}
+					} else escape = false;
+	
+					if (!quote) {
+						if (c == '{' || c == '[') {
+							brackets++;
+						} else if (c == '}' || c == ']') {
+							brackets--;
+						}
+					}
+				}
+
+				// fail if unclosed quotes or brackets left
+				if (quote || brackets > 0) {
+					throw new RuntimeException("JSON: Corrupted JSON");
+				}
+
+				if (object && key == null) {
+					key = str.substring(i, splIndex);
+					key = key.substring(1, key.length() - 1);
+					nextDelimiter = ',';
+				} else {
+					Object value = str.substring(i, splIndex).trim();
+					// check if value is empty
+					if(((String) value).length() == 0) continue;
+					// don't check length because if value is empty, then exception is going to be thrown anyway
+					char c = ((String) value).charAt(0);
+					// leave JSONString as value to parse it later, if its object or array and nested parsing is disabled
+					value = parse_members || (c != '{' && c != '[') ?
+							parseJSON((String) value) : new String[] {(String) value};
+					if (object) {
+						((JSONObject) res)._put(key, value);
+						key = null;
+						nextDelimiter = ':';
+					} else if (splIndex > i) {
+						((JSONArray) res).addElement(value);
+					}
+				}
+			}
+			return res;
+		}
+		case 'n': // null
+			return json_null;
+		case 't': // true
+			return TRUE;
+		case 'f': // false
+			return FALSE;
+		default: // number
+			if ((first >= '0' && first <= '9') || first == '-') {
+				try {
+					// hex
+					if (length > 1 && first == '0' && str.charAt(1) == 'x') {
+						if (length > 9) // str.length() > 10
+							return new Long(Long.parseLong(str.substring(2), 16));
+						return new Integer(Integer.parseInt(str.substring(2), 16));
+					}
+					// decimal
+					if (str.indexOf('.') != -1 || str.indexOf('E') != -1 || "-0".equals(str))
+						return new Double(Double.parseDouble(str));
+					if (first == '-') length--;
+					if (length > 8) // (str.length() - (str.charAt(0) == '-' ? 1 : 0)) >= 10
+						return new Long(Long.parseLong(str));
+					return new Integer(Integer.parseInt(str));
+				} catch (Exception e) {}
+			}
+			throw new RuntimeException("JSON: Couldn't be parsed: " + str);
+//			return new JSONString(str);
+		}
+	}
+
+	// transforms string for exporting
+	static String escape_utf8(String s) {
+		int len = s.length();
+		StringBuffer sb = new StringBuffer();
+		int i = 0;
+		while (i < len) {
+			char c = s.charAt(i);
+			switch (c) {
+			case '"':
+			case '\\':
+				sb.append("\\").append(c);
+				break;
+			case '\b':
+				sb.append("\\b");
+				break;
+			case '\f':
+				sb.append("\\f");
+				break;
+			case '\n':
+				sb.append("\\n");
+				break;
+			case '\r':
+				sb.append("\\r");
+				break;
+			case '\t':
+				sb.append("\\t");
+				break;
+			default:
+				if (c < 32 || c > 1103) {
+					String u = Integer.toHexString(c);
+					sb.append("\\u");
+					for (int z = u.length(); z < 4; z++) {
+						sb.append('0');
+					}
+					sb.append(u);
+				} else {
+					sb.append(c);
+				}
+			}
+			i++;
+		}
+		return sb.toString();
+	}
+
+	static double getDouble(Object o) {
+		try {
+			if (o instanceof String[])
+				return Double.parseDouble(((String[]) o)[0]);
+			if (o instanceof Integer)
+				return ((Integer) o).intValue();
+			if (o instanceof Long)
+				return ((Long) o).longValue();
+			if (o instanceof Double)
+				return ((Double) o).doubleValue();
+		} catch (Throwable e) {}
+		throw new RuntimeException("JSON: Cast to double failed: " + o);
+	}
+
+	static int getInt(Object o) {
+		try {
+			if (o instanceof String[])
+				return Integer.parseInt(((String[]) o)[0]);
+			if (o instanceof Integer)
+				return ((Integer) o).intValue();
+			if (o instanceof Long)
+				return (int) ((Long) o).longValue();
+			if (o instanceof Double)
+				return ((Double) o).intValue();
+		} catch (Throwable e) {}
+		throw new RuntimeException("JSON: Cast to int failed: " + o);
+	}
+
+	static long getLong(Object o) {
+		try {
+			if (o instanceof String[])
+				return Long.parseLong(((String[]) o)[0]);
+			if (o instanceof Integer)
+				return ((Integer) o).longValue();
+			if (o instanceof Long)
+				return ((Long) o).longValue();
+			if (o instanceof Double)
+				return ((Double) o).longValue();
+		} catch (Throwable e) {}
+		throw new RuntimeException("JSON: Cast to long failed: " + o);
+	}
+
 
 }
