@@ -1,7 +1,6 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -612,7 +611,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				categoriesList.addCommand(List.SELECT_COMMAND);
 				categoriesList.setCommandListener(this);
 				
-				JSONArray j = getArray(getUtf(URL + "categories.json"));
+				JSONArray j = getArray(getUtf(URL + "categories.php?lang=" + lang + APIV));
 
 				JSONObject objs = j.getObject(1);
 				JSONArray list = j.getArray(0);
@@ -1123,11 +1122,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		int i = 0;
 		char c;
 		byte[] bytes = null;
-		while (i < numChars) {
-			c = s.charAt(i);
-			switch (c) {
-			case '%':
-				try {
+		try {
+			while (i < numChars) {
+				c = s.charAt(i);
+				switch (c) {
+				case '%':
 					if (bytes == null)
 						bytes = new byte[(numChars - i) / 3];
 					int pos = 0;
@@ -1143,18 +1142,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					if ((i < numChars) && (c == '%'))
 						throw new IllegalArgumentException();
 					sb.append(new String(bytes, 0, pos, "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					throw new IllegalArgumentException();
-				} catch (NumberFormatException e) {
-					throw new IllegalArgumentException();
+					needToChange = true;
+					break;
+				default:
+					sb.append(c);
+					i++;
+					break;
 				}
-				needToChange = true;
-				break;
-			default:
-				sb.append(c);
-				i++;
-				break;
 			}
+		} catch (IOException e) {
+			throw new RuntimeException(e.toString());
 		}
 		return (needToChange ? sb.toString() : s);
 	}
@@ -1210,82 +1207,84 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		case '"': { // string
 			if (last != '"')
 				throw new RuntimeException("JSON: Unexpected end of text");
-			char[] chars = str.substring(1, length).toCharArray();
-			str = null;
-			int l = chars.length;
-			StringBuffer sb = new StringBuffer();
-			int i = 0;
-			// parse escaped chars in string
-			loop: {
-				while (i < l) {
-					char c = chars[i];
-					switch (c) {
-					case '\\': {
-						next: {
-							replace: {
-								if (l < i + 1) {
-									sb.append(c);
-									break loop;
+			if(str.indexOf('\\') != -1) {
+				char[] chars = str.substring(1, length).toCharArray();
+				str = null;
+				int l = chars.length;
+				StringBuffer sb = new StringBuffer();
+				int i = 0;
+				// parse escaped chars in string
+				loop: {
+					while (i < l) {
+						char c = chars[i];
+						switch (c) {
+						case '\\': {
+							next: {
+								replace: {
+									if (l < i + 1) {
+										sb.append(c);
+										break loop;
+									}
+									char c1 = chars[i + 1];
+									switch (c1) {
+									case 'u':
+										i+=2;
+										sb.append((char) Integer.parseInt(
+												new String(new char[] {chars[i++], chars[i++], chars[i++], chars[i++]}),
+												16));
+										break replace;
+									case 'x':
+										i+=2;
+										sb.append((char) Integer.parseInt(
+												new String(new char[] {chars[i++], chars[i++]}),
+												16));
+										break replace;
+									case 'n':
+										sb.append('\n');
+										i+=2;
+										break replace;
+									case 'r':
+										sb.append('\r');
+										i+=2;
+										break replace;
+									case 't':
+										sb.append('\t');
+										i+=2;
+										break replace;
+									case 'f':
+										sb.append('\f');
+										i+=2;
+										break replace;
+									case 'b':
+										sb.append('\b');
+										i+=2;
+										break replace;
+									case '\"':
+									case '\'':
+									case '\\':
+									case '/':
+										i+=2;
+										sb.append((char) c1);
+										break replace;
+									default:
+										break next;
+									}
 								}
-								char c1 = chars[i + 1];
-								switch (c1) {
-								case 'u':
-									i+=2;
-									sb.append((char) Integer.parseInt(
-											new String(new char[] {chars[i++], chars[i++], chars[i++], chars[i++]}),
-											16));
-									break replace;
-								case 'x':
-									i+=2;
-									sb.append((char) Integer.parseInt(
-											new String(new char[] {chars[i++], chars[i++]}),
-											16));
-									break replace;
-								case 'n':
-									sb.append('\n');
-									i+=2;
-									break replace;
-								case 'r':
-									sb.append('\r');
-									i+=2;
-									break replace;
-								case 't':
-									sb.append('\t');
-									i+=2;
-									break replace;
-								case 'f':
-									sb.append('\f');
-									i+=2;
-									break replace;
-								case 'b':
-									sb.append('\b');
-									i+=2;
-									break replace;
-								case '\"':
-								case '\'':
-								case '\\':
-								case '/':
-									i+=2;
-									sb.append((char) c1);
-									break replace;
-								default:
-									break next;
-								}
+								break;
 							}
+							sb.append(c);
+							i++;
 							break;
 						}
-						sb.append(c);
-						i++;
-						break;
-					}
-					default:
-						sb.append(c);
-						i++;
+						default:
+							sb.append(c);
+							i++;
+						}
 					}
 				}
+				str = sb.toString();
+				sb = null;
 			}
-			str = sb.toString();
-			sb = null;
 			return str;
 		}
 		case '{': // JSON object or array
