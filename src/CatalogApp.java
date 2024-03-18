@@ -45,6 +45,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final int RUN_REFRESH = 7;
 	private static final int RUN_CATEGORIES = 8;
 	private static final int RUN_EXIT_TIMEOUT = 9;
+	private static final int RUN_CHECK = 10;
 	
 	private static final String APIV = "&v=1";
 
@@ -66,7 +67,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static Command cancelCmd;
 	private static Command installExtCmd;
-	
+
+	private static CatalogApp midlet;
 	private static Display display;
 	
 	private static boolean started;
@@ -99,11 +101,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static boolean installing;
 	private static int screenshotsIdx;
 	
+	private static String midletVersion;
+	private static String statApp;
+	private static String statType;
+	
 	private int run;
 	
 	private static String lang = "ru";
 
 	public CatalogApp() {
+		midlet = this;
 	}
 
 	protected void destroyApp(boolean unconditional) {
@@ -119,6 +126,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		started = true;
 		display = Display.getDisplay(this);
+		midletVersion = getAppProperty("MIDlet-Version");
 		
 		try {
 			// load settings
@@ -257,7 +265,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				int i;
 				if((i = ((List)d).getSelectedIndex()) == -1) return;
 				final JSONObject app = catalog.getObject(i);
-				startApp(app.getString("suite"), app.getString("vendor"), app.getString("uid"));
+				appLaunchInfo = new String[] {app.getString("suite"), app.getString("vendor"), app.getString("uid"), app.getString("id")};
+				launchApp();
 			} catch (Exception e) {
 				e.printStackTrace();
 				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
@@ -280,7 +289,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			f.addCommand(backCmd);
 			
 			StringItem s;
-			s = new StringItem(null, "nnhub v" + this.getAppProperty("MIDlet-Version"));
+			s = new StringItem(null, "nnhub v" + midletVersion);
 			s.setFont(Font.getFont(0, 0, Font.SIZE_LARGE));
 			s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_VCENTER);
 			f.append(s);
@@ -319,6 +328,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if(c == dlCmd) {
 			try {
 				if(installing) return;
+				stat("install", appLaunchInfo[3]);
 				if(symbianPatch) {
 					start(RUN_INSTALL);
 					return;
@@ -330,7 +340,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		if(c == launchCmd) {
 			try {
-				startApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
+				launchApp();
 			} catch (Exception e) {
 				e.printStackTrace();
 				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
@@ -339,6 +349,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		if(c == uninstallCmd) {
 			if(installing) return;
+			stat("uninstall", appLaunchInfo[3]);
 			start(RUN_UNINSTALL);
 			return;
 		}
@@ -648,20 +659,28 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			} catch (Exception e) {}
 			notifyDestroyed();
 			return;
+		case RUN_CHECK: {
+			try {
+				if(statType == null) {
+					
+				}
+				getUtf(URL + "check.php?t=" + url(statType) + "&a=" + statApp + "&lang=" + lang + "&v=" + midletVersion);
+			} catch (Exception e) {}
+			return;
+		}
 		}
 	}
 	
 	private void afterStart() {
-		if(symbian3 && !symbianPatch && !warnShown) {
-			warnShown = true;
-			Alert a = new Alert("");
-			a.setType(AlertType.INFO);
-			a.setString(L[SymbianExtensionAlert]);
-			a.setCommandListener(this);
-			a.addCommand(cancelCmd);
-			a.addCommand(installExtCmd);
-			display(a, catalogList);
-		}
+		if(symbian3 || symbianPatch || warnShown) return;
+		warnShown = true;
+		Alert a = new Alert("");
+		a.setType(AlertType.INFO);
+		a.setString(L[SymbianExtensionAlert]);
+		a.setCommandListener(this);
+		a.addCommand(cancelCmd);
+		a.addCommand(installExtCmd);
+		display(a, catalogList);
 	}
 	
 	private void refresh() {
@@ -733,7 +752,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		return resize(img, p, p);
 	}
 	
-	private boolean isAppInstalled(String suite, String vendor, String uid) {
+	private static boolean isAppInstalled(String suite, String vendor, String uid) {
 		try {
 			if(suite == null) { // native app TODO
 				return false;
@@ -746,7 +765,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		return false;
 	}
 	
-	private String getInstalledVersion(String suite, String vendor, String uid) {
+	private static String getInstalledVersion(String suite, String vendor, String uid) {
 		try {
 			if(suite == null) { // native app TODO
 				return "1.0.0";
@@ -762,17 +781,18 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		return null;
 	}
 	
-	private void startApp(String suite, String vendor, String uid) throws Exception {
+	private void launchApp() throws Exception {
+		stat("launch", appLaunchInfo[3]);
 		String arg = "from=nnstore";
-		if(suite == null) { // native app
+		if(appLaunchInfo[0] == null) { // native app
 			if(!symbian) return;
-			if(platformRequest("nativeapp:application-uid=" + uid))
+			if(platformRequest("nativeapp:application-uid=" + appLaunchInfo[2]))
 				notifyDestroyed();
-		} else if(uid != null && symbian) {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + uid + ";" + url(arg)))
+		} else if(appLaunchInfo[2] != null && symbian) {
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";" + url(arg)))
 				notifyDestroyed();
 		} else {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-name=" + url(suite) + ";midlet-vendor=" + url(vendor) + ";" + url(arg)))
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-name=" + url(appLaunchInfo[0]) + ";midlet-vendor=" + url(appLaunchInfo[1]) + ";" + url(arg)))
 				notifyDestroyed();
 		}
 	}
@@ -809,6 +829,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 	}
 	
+	private static void stat(String type, String id) {
+		statType = type;
+		statApp = id;
+		midlet.start(RUN_CHECK);
+	}
 	
 	// utils
 
@@ -1284,8 +1309,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 				str = sb.toString();
 				sb = null;
+				return str;
 			}
-			return str;
+			return str.substring(1, length);
 		}
 		case '{': // JSON object or array
 		case '[': {
