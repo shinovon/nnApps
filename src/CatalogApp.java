@@ -128,6 +128,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		display = Display.getDisplay(this);
 		midletVersion = getAppProperty("MIDlet-Version");
 		
+		if(!"nnhub".equals(getAppProperty("MIDlet-Name")) ||
+				!"nnproject".equals(getAppProperty("MIDlet-Vendor")))
+			throw new RuntimeException();
+		
 		try {
 			// load settings
 			RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, false);
@@ -136,33 +140,27 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			lang = j.getString("lang", lang);
 		} catch (Exception e) {}
 		
-		try {
-			loadLang();
-			
-			Form form;
-			rootScreen = form = new Form(L[0]);
-			form.append(L[Loading]);
-			display(form);
+		loadLang();
+		
+		Form form;
+		rootScreen = form = new Form(L[0]);
+		form.append(L[Loading]);
+		display(form);
 
-			exitCmd = new Command(L[Exit], Command.EXIT, 1);
-			aboutCmd = new Command(L[About], Command.SCREEN, 3);
-			settingsCmd = new Command(L[Settings], Command.SCREEN, 2);
-			
-			backCmd = new Command(L[Back], Command.BACK, 1);
-			
-			dlCmd = new Command(L[Download], Command.ITEM, 1);
-			launchCmd = new Command(L[LaunchCmd], Command.ITEM, 1);
-			uninstallCmd = new Command(L[Uninstall], Command.ITEM, 1);
-			screenshotCmd = new Command(L[ScreenshotCmd], Command.ITEM, 1);
-			hyperlinkCmd = new Command(L[Open], Command.ITEM, 2);
-			
-			cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
-			installExtCmd = new Command(L[Install], Command.OK, 1);
-		} catch (Exception e) {
-			display(warningAlert(e.toString()));
-			start(RUN_EXIT_TIMEOUT);
-			return;
-		}
+		exitCmd = new Command(L[Exit], Command.EXIT, 1);
+		aboutCmd = new Command(L[About], Command.SCREEN, 3);
+		settingsCmd = new Command(L[Settings], Command.SCREEN, 2);
+		
+		backCmd = new Command(L[Back], Command.BACK, 1);
+		
+		dlCmd = new Command(L[Download], Command.ITEM, 1);
+		launchCmd = new Command(L[LaunchCmd], Command.ITEM, 1);
+		uninstallCmd = new Command(L[Uninstall], Command.ITEM, 1);
+		screenshotCmd = new Command(L[ScreenshotCmd], Command.ITEM, 1);
+		hyperlinkCmd = new Command(L[Open], Command.ITEM, 2);
+		
+		cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
+		installExtCmd = new Command(L[Install], Command.OK, 1);
 		
 		try {
 			String platform;
@@ -180,7 +178,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				InstallerExtension.init();
 				symbianPatch = true;
 			}
-		} catch (Throwable e) {} 
+		} catch (Throwable e) {}
 		try {
 			int p = display.getBestImageHeight(Display.LIST_ELEMENT);
 			if(p <= 0) p = 48;
@@ -293,7 +291,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setFont(Font.getFont(0, 0, Font.SIZE_LARGE));
 			s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_VCENTER);
 			f.append(s);
-			s = new StringItem(null, "что-то\n\n");
+			s = new StringItem(null, "Список приложений\n\n");
 			s.setFont(Font.getDefaultFont());
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
@@ -315,7 +313,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
 			f.append(s);
-			s = new StringItem(null, "\n\nвыф тв\n292 labs");
+			s = new StringItem(null, "\n\nс первым апреля\n\n292 labs");
 			s.setFont(Font.getDefaultFont());
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
@@ -672,7 +670,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	private void afterStart() {
-		if(symbian3 || symbianPatch || warnShown) return;
+		if(!symbian3 || symbianPatch || warnShown) return;
 		warnShown = true;
 		Alert a = new Alert("");
 		a.setType(AlertType.INFO);
@@ -714,7 +712,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		} catch (Exception e) {}
 	}
 	
-	private void display(Alert a, Displayable d) {
+	private static void display(Alert a, Displayable d) {
 		if(d == null) {
 			display.setCurrent(a);
 			return;
@@ -722,7 +720,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		display.setCurrent(a, d);
 	}
 	
-	private void display(Displayable d) {
+	private static void display(Displayable d) {
 		if(d instanceof Alert) {
 			Displayable c;
 			display.setCurrent((Alert) d, (c = display.getCurrent()) instanceof Alert ? rootScreen : c);
