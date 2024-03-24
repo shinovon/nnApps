@@ -682,7 +682,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(statType == null) {
 					
 				}
-				getUtf(URL + "check.php?t=" + url(statType) + "&a=" + statApp + "&lang=" + lang + "&v=" + midletVersion);
+				getUtf(URL + "check.php?t=" + url(statType) + "&a=" + statApp + "&lang=" + lang + "&v=" + midletVersion + "&p=" + url(platform));
 			} catch (Exception e) {}
 			return;
 		}
@@ -1031,6 +1031,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					r = System.getProperty("microedition.location.version") != null;
 					break;
 				}
+				if("swt".equals(c)) {
+					r = checkClass("org.eclipse.ercp.swt.mobile.MobileShell");
+					break;
+				}
 			default:
 				if(c.startsWith("s40")) {
 					if(!s40()) break;
@@ -1066,6 +1070,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							checkClass("javax.crypto.Cipher");
 					if(!c.endsWith("+"))
 						r &= !symbianJrt || platform.indexOf("version=5.") == -1;
+					break;
+				}
+				if(c.startsWith("s60v5")) {
+					r = c.endsWith("+") ? platform.indexOf("version=5.") != -1 : platform.indexOf("version=5.0") != -1;
 					break;
 				}
 				if("belle".equals(c)) {
