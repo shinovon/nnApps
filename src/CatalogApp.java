@@ -72,6 +72,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static Display display;
 	
 	private static boolean started;
+	private static boolean warnShown;
 
 	private static Displayable rootScreen;
 	private static List categoriesList;
@@ -80,12 +81,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static Form settingsForm;
 	private static ChoiceGroup langChoice;
-	
-	private static boolean symbian;
+
+	private static String platform;
+	private static boolean symbianJrt;
 	private static boolean symbian3;
 	private static boolean symbianPatch;
 	private static boolean launchSupported;
-	private static boolean warnShown;
+	private static boolean j2meloader;
 	
 	private static Image listPlaceholderImg;
 	private static int listImgHeight;
@@ -163,20 +165,25 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		installExtCmd = new Command(L[Install], Command.OK, 1);
 		
 		try {
-			String platform;
-			symbian = (platform = System.getProperty("microedition.platform")).indexOf("platform=S60") != -1;
-			symbian3 = symbian && platform.indexOf("java_build_version=2") != -1; 
-			if(!(launchSupported = platform.toLowerCase().startsWith("nokia"))) {
-				try {
-					Class.forName("javax.microedition.shell.MicroActivity"); // j2me loader check
-					launchSupported = true;
-				} catch (Exception e) {}
-			}
-			if(symbian) {
-				Class.forName("ru.nnproject.installerext.InstallerExtension");
-				System.out.println("ext found");
-				InstallerExtension.init();
-				symbianPatch = true;
+			String plat = System.getProperty("microedition.platform");
+			if(plat == null) {
+				platform = "null";
+			} else {
+				platform = plat;
+				symbianJrt = plat.indexOf("platform=S60") != -1;
+				symbian3 = symbianJrt && plat.indexOf("java_build_version=2") != -1; 
+				if(!(launchSupported = plat.toLowerCase().startsWith("nokia"))) {
+					try {
+						Class.forName("javax.microedition.shell.MicroActivity"); // j2me loader check
+						j2meloader = launchSupported = true;
+					} catch (Exception e) {}
+				}
+				if(symbianJrt) {
+					Class.forName("ru.nnproject.installerext.InstallerExtension");
+					System.out.println("ext found");
+					InstallerExtension.init();
+					symbianPatch = true;
+				}
 			}
 		} catch (Throwable e) {}
 		try {
@@ -468,53 +475,80 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(app.has("screenshots")) start(RUN_SCREENSHOTS);
 				
 				String last = app.getString("last");
-				if(symbianPatch) {
-					boolean installed = isAppInstalled(suite, vendor, uid);
-					String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
-					
-					
-					if(installed) {
-						boolean needUpdate = !ver.equals(last);
+				
+				boolean supported = true;
+				int idx;
+				String c;
+				if((c = app.getString("c", null)) != null) {
+					while(supported && (idx = c.indexOf(';')) != -1) {
+						supported &= compatibility(c.substring(0, idx));
+						c = c.substring(idx + 1);
+					}
+					if(c.length() > 0) supported &= compatibility(c);
+				}
+				if(supported) {
+					if(symbianPatch) {
+						boolean installed = isAppInstalled(suite, vendor, uid);
+						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
 						
-						if(needUpdate) {
-							s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n");
-							s.setFont(Font.getDefaultFont());
-							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+						
+						if(installed) {
+							boolean needUpdate = !ver.equals(last);
 							
-							s = new StringItem(null, L[InstalledVersion] + ": " + ver + "\n\n");
-							s.setFont(Font.getDefaultFont());
-							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
-						} else {
-							s = new StringItem(null, "\n" + L[Version] + ": " + ver + "\n\n");
-							s.setFont(Font.getDefaultFont());
-							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
-						}
-						
-						if(appUrl != null && !ver.equals(last)) {
-							s = new StringItem(null, L[Update], Item.BUTTON);
-							s.setDefaultCommand(dlCmd);
+							if(needUpdate) {
+								s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n");
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								appForm.append(s);
+								
+								s = new StringItem(null, L[InstalledVersion] + ": " + ver + "\n\n");
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								appForm.append(s);
+							} else {
+								s = new StringItem(null, "\n" + L[Version] + ": " + ver + "\n\n");
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								appForm.append(s);
+							}
+							
+							if(appUrl != null && !ver.equals(last)) {
+								s = new StringItem(null, L[Update], Item.BUTTON);
+								s.setDefaultCommand(dlCmd);
+								s.setItemCommandListener(CatalogApp.this);
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								appForm.append(s);
+							}
+							
+							s = new StringItem(null, L[Launch], Item.BUTTON);
+							s.setDefaultCommand(launchCmd);
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							appForm.append(s);
+							
+							s = new StringItem(null, L[Uninstall], Item.BUTTON);
+							s.setDefaultCommand(uninstallCmd);
+							s.setItemCommandListener(CatalogApp.this);
+							s.setFont(Font.getDefaultFont());
+							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+							appForm.append(s);
+						} else {
+							s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
+							s.setFont(Font.getDefaultFont());
+							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+							appForm.append(s);
+							
+							if(appUrl != null) {
+								s = new StringItem(null, L[Install], Item.BUTTON);
+								s.setDefaultCommand(dlCmd);
+								s.setItemCommandListener(CatalogApp.this);
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								appForm.append(s);
+							}
 						}
-						
-						s = new StringItem(null, L[Launch], Item.BUTTON);
-						s.setDefaultCommand(launchCmd);
-						s.setItemCommandListener(CatalogApp.this);
-						s.setFont(Font.getDefaultFont());
-						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-						appForm.append(s);
-						
-						s = new StringItem(null, L[Uninstall], Item.BUTTON);
-						s.setDefaultCommand(uninstallCmd);
-						s.setItemCommandListener(CatalogApp.this);
-						s.setFont(Font.getDefaultFont());
-						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-						appForm.append(s);
 					} else {
 						s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
 						s.setFont(Font.getDefaultFont());
@@ -522,36 +556,22 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						appForm.append(s);
 						
 						if(appUrl != null) {
-							s = new StringItem(null, L[Install], Item.BUTTON);
+							s = new StringItem(null, L[Download], Item.BUTTON);
 							s.setDefaultCommand(dlCmd);
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							appForm.append(s);
 						}
-					}
-				} else {
-					s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
-					s.setFont(Font.getDefaultFont());
-					s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-					appForm.append(s);
-					
-					if(appUrl != null) {
-						s = new StringItem(null, L[Download], Item.BUTTON);
-						s.setDefaultCommand(dlCmd);
-						s.setItemCommandListener(CatalogApp.this);
-						s.setFont(Font.getDefaultFont());
-						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-						appForm.append(s);
-					}
-					
-					if(launchSupported) {
-						s = new StringItem(null, L[Launch], Item.BUTTON);
-						s.setDefaultCommand(launchCmd);
-						s.setItemCommandListener(CatalogApp.this);
-						s.setFont(Font.getDefaultFont());
-						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-						appForm.append(s);
+						
+						if(launchSupported) {
+							s = new StringItem(null, L[Launch], Item.BUTTON);
+							s.setDefaultCommand(launchCmd);
+							s.setItemCommandListener(CatalogApp.this);
+							s.setFont(Font.getDefaultFont());
+							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+							appForm.append(s);
+						}
 					}
 				}
 			} catch (Exception e) {
@@ -634,7 +654,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					String c = list.getString(i++);
 					JSONObject o = objs.getObject(c);
 					
-					if(o.getBoolean("sym", false) && !symbian) // symbian only
+					if(o.getBoolean("sym", false) && !symbianJrt) // symbian only
 						continue;
 					
 					Object n = o.get("name");
@@ -668,20 +688,20 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		}
 	}
-	
-	private void afterStart() {
+
+	private static void afterStart() {
 		if(!symbian3 || symbianPatch || warnShown) return;
 		warnShown = true;
 		Alert a = new Alert("");
 		a.setType(AlertType.INFO);
 		a.setString(L[SymbianExtensionAlert]);
-		a.setCommandListener(this);
+		a.setCommandListener(midlet);
 		a.addCommand(cancelCmd);
 		a.addCommand(installExtCmd);
 		display(a, catalogList);
 	}
 	
-	private void refresh() {
+	private static void refresh() {
 		if(catalogList == null || appLaunchInfo == null) return;
 		int i = -1;
 		int l = catalog.size();
@@ -783,14 +803,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		stat("launch", appLaunchInfo[3]);
 		String arg = "from=nnstore";
 		if(appLaunchInfo[0] == null) { // native app
-			if(!symbian) return;
+			if(!symbianJrt) return;
 			if(platformRequest("nativeapp:application-uid=" + appLaunchInfo[2]))
 				notifyDestroyed();
-		} else if(appLaunchInfo[2] != null && symbian) {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";" + url(arg)))
+		} else if(appLaunchInfo[2] != null && symbian3) {
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";" + arg))
 				notifyDestroyed();
 		} else {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-name=" + url(appLaunchInfo[0]) + ";midlet-vendor=" + url(appLaunchInfo[1]) + ";" + url(arg)))
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-name=" + url(appLaunchInfo[0]) + ";midlet-vendor=" + url(appLaunchInfo[1]) + ";" + arg))
 				notifyDestroyed();
 		}
 	}
@@ -814,6 +834,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				c = r.read();
 				if(c <= 0) break;
 				if(c == '\r') continue;
+				if(c == '\\') {
+					c = (char) r.read();
+					s.append(c == 'n' ? '\n' : c);
+					continue;
+				}
 				if(c == '\n') {
 					L[i++] = s.toString();
 					s.setLength(0);
@@ -925,6 +950,167 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 
 	private static String getUtf(String url) throws IOException {
 		return new String(get(url), "UTF-8");
+	}
+	
+	// platform & compatibility
+	
+	private static boolean compatibility(String c) {
+		int idx = c.indexOf('|');
+		boolean r = false;
+		if(idx == -1) {
+			boolean not = c.charAt(0) == '!';
+			switch(c.length()) {
+			case 1:
+				r = "1".equals(c);
+				break;
+			case 2:
+				if("sj".equals(c)) {
+					r = symbianJrt;
+					break;
+				}
+				if("s3".equals(c)) {
+					r = symbian3;
+					break;
+				}
+				if("sg".equals(c)) {
+					r = platform.toLowerCase().startsWith("samsung");
+					break;
+				}
+				if("se".equals(c)) {
+					r = platform.toLowerCase().startsWith("sonyericsson");
+					break;
+				}
+				if("nk".equals(c)) {
+					r = platform.toLowerCase().startsWith("nokia");
+					break;
+				}
+				if("jl".equals(c)) {
+					r = j2meloader;
+					break;
+				}
+			case 3:
+				if("s60".equals(c)) {
+					r = symbianJrt || s60();
+					break;
+				}
+				if("s94".equals(c)) {
+					r = symbianJrt && platform.indexOf("version=5.0") != -1;
+					break;
+				}
+				if("s93".equals(c)) {
+					r = symbianJrt && platform.indexOf("version=3.2") != -1;
+					break;
+				}
+				if("s92".equals(c)) {
+					r = !symbianJrt && s60() &&
+							System.getProperty("microedition.amms.version") != null;
+					break;
+				}
+				if("s91".equals(c)) {
+					r = !symbianJrt && s60() &&
+							System.getProperty("microedition.amms.version") == null &&
+							(
+									System.getProperty("microedition.sip.version") != null ||
+									checkClass("javax.crypto.Cipher")
+							);
+					break;
+				}
+				if("s40".equals(c)) {
+					r = s40();
+					break;
+				}
+				if("sjp".equals(c)) {
+					r = System.getProperty("com.sonyericsson.java.platform") != null;
+					break;
+				}
+				if("m3g".equals(c)) {
+					r = System.getProperty("microedition.m3g.version") != null;
+					break;
+				}
+				if("gps".equals(c)) {
+					r = System.getProperty("microedition.location.version") != null;
+					break;
+				}
+			default:
+				if(c.startsWith("s40")) {
+					if(!s40()) break;
+					boolean plus = c.endsWith("+");
+					if(c.startsWith("s40v3")) {
+						r = checkClass("com.nokia.mid.pri.PriAccess") ||
+							checkClass("javax.microedition.m2g.ScalableGraphics");
+						if(!plus)
+							r &= System.getProperty("microedition.amms.version") == null;
+						break;
+					}
+					if(c.startsWith("s40v5")) {
+						r = System.getProperty("microedition.amms.version") != null;
+						if(!plus)
+							r &= System.getProperty("microedition.location.version") == null;
+						break;
+					}
+					if(c.startsWith("s40v6")) {
+						r = System.getProperty("microedition.location.version") != null ||
+								checkClass("com.arm.cldc.mas.GlobalLock");
+						if(!plus)
+							r &= platform.indexOf("java") == -1;
+						break;
+					}
+					if(c.startsWith("s40a")) {
+						r = platform.indexOf("java") != -1;
+						break;
+					}
+				}
+				if(c.startsWith("s60v3")) {
+					if(!s60()) break;
+					r = System.getProperty("microedition.sip.version") != null ||
+							checkClass("javax.crypto.Cipher");
+					if(!c.endsWith("+"))
+						r &= !symbianJrt || platform.indexOf("version=5.") == -1;
+					break;
+				}
+				if("belle".equals(c)) {
+					r = symbian3 && platform.charAt(platform.indexOf("version=5.") + 10) > '2';
+					break;
+				}
+				if("asha".equals(c)) { // TODO
+				}
+				System.out.println("Undefined compatibility flag: " + c);
+				return false;
+			}
+			return not?!r:r;
+		}
+		do {
+			r = compatibility(c.substring(0, idx));
+			c = c.substring(idx + 1);
+		} while(!r && (idx = c.indexOf('|')) != -1);
+		if(c.length() > 0) r |= compatibility(c);
+		return r;
+	}
+	
+	private static boolean s40() {
+		return !checkClass("com.sun.midp.Main") && 
+				(platform.startsWith("Nokia") ||
+				platform.startsWith("Vertu")) &&
+				(
+						checkClass("javax.microedition.midlet.MIDletProxy") || 
+						checkClass("com.nokia.mid.impl.isa.jam.Jam")
+				);
+	}
+	
+	private static boolean s60() { // symbian ..-9.2 check
+		return System.getProperty("com.symbian.midp.serversocket.support") != null ||
+				System.getProperty("com.symbian.default.to.suite.icon") != null ||
+				checkClass("com.symbian.midp.io.protocol.http.Protocol") ||
+				checkClass("com.symbian.lcdjava.io.File");
+	}
+	
+	private static boolean checkClass(String s) {
+		try {
+			Class.forName(s);
+			return true;
+		} catch (Exception e) {
+		}
+		return false;
 	}
 	
 	// image utils
