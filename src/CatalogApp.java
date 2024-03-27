@@ -109,7 +109,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private int run;
 	
-	private static String lang = "ru";
+	private static String lang = "en";
 
 	public CatalogApp() {
 		midlet = this;
@@ -133,6 +133,17 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if(!"nnhub".equals(getAppProperty("MIDlet-Name")) ||
 				!"nnproject".equals(getAppProperty("MIDlet-Vendor")))
 			throw new RuntimeException();
+		
+		try {
+			String s;
+			if("ru".equalsIgnoreCase(System.getProperty("user.language")) || (
+					(s = System.getProperty("microedition.locale")) != null &&
+					s.toLowerCase().indexOf("ru") != -1
+					)
+					) {
+				lang = "ru";
+			}
+		} catch (Exception e) {}
 		
 		try {
 			// load settings
