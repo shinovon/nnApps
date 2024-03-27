@@ -25,4 +25,5 @@ public interface LangConstants {
 	static final int Open = 24;
 	static final int Settings = 25;
 	static final int Language = 26;
+	static final int AppNotSupported = 27;
 }

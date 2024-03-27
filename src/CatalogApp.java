@@ -400,7 +400,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				catalogList.setCommandListener(this);
 				catalogList.setFitPolicy(Choice.TEXT_WRAP_ON);
 				
-				catalog = getArray(getUtf(URL + (c == null ? "catalog.php?lang=" + lang + APIV : "catalog.php?c=" + c + "&lang=" + lang + APIV)));
+				catalog = getArray(getUtf(URL + (c == null ? "catalog.php?lang=" + lang + APIV : "catalog.php?c=" + c + "&lang=" + lang + "&p=" + url(platform) + APIV)));
 				
 				int l = catalog.size();
 				int i = 0;
@@ -453,7 +453,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appUrl = app.getNullableString("dl");
 				appLaunchInfo = new String[] {suite, vendor, uid, id};
 				
-				appForm.append(appImageItem = new ImageItem(null, resizeAppIcon(catalogList.getImage(i), 58), 
+				Form f = appForm;
+				f.append(appImageItem = new ImageItem(null, resizeAppIcon(catalogList.getImage(i), 58), 
 						Item.LAYOUT_2 | Item.LAYOUT_LEFT, null));
 				
 				StringItem s;
@@ -461,12 +462,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				s = new StringItem(null, app.has("name") ? app.getString("name") : app.getString("suite"));
 				s.setFont(Font.getFont(0, Font.STYLE_BOLD, Font.SIZE_LARGE));
 				s.setLayout(Item.LAYOUT_2 | Item.LAYOUT_LEFT | Item.LAYOUT_TOP);
-				appForm.append(s);
+				f.append(s);
 				
 				s = new StringItem(null, " | " + vendor);
 				s.setFont(Font.getFont(0, 0, Font.SIZE_SMALL));
 				s.setLayout(Item.LAYOUT_2 | Item.LAYOUT_LEFT | Item.LAYOUT_TOP | Item.LAYOUT_NEWLINE_AFTER);
-				appForm.append(s);
+				f.append(s);
 				Object d = app.getNullable("description");
 				String ds = L[NoDescription];
 				if(d != null) {
@@ -481,7 +482,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				s = new StringItem(null, ds + "\n\n");
 				s.setFont(Font.getDefaultFont());
 				s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-				screenshotsIdx = appForm.append(s);
+				screenshotsIdx = f.append(s);
 				
 				if(app.has("screenshots")) start(RUN_SCREENSHOTS);
 				
@@ -497,7 +498,21 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					}
 					if(c.length() > 0) supported &= compatibility(c);
 				}
-				if(supported) {
+				if(!supported) {
+					s = new StringItem(null, "\n" + L[AppNotSupported] + "\n\n" + L[LastVersion] + ": " + last + "\n\n");
+					s.setFont(Font.getDefaultFont());
+					s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+					f.append(s);
+					
+					if(appUrl != null) {
+						s = new StringItem(null, L[Download], Item.BUTTON);
+						s.setDefaultCommand(dlCmd);
+						s.setItemCommandListener(CatalogApp.this);
+						s.setFont(Font.getDefaultFont());
+						s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+						f.append(s);
+					}
+				} else {
 					if(symbianPatch) {
 						boolean installed = isAppInstalled(suite, vendor, uid);
 						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
@@ -510,17 +525,17 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-								appForm.append(s);
+								f.append(s);
 								
 								s = new StringItem(null, L[InstalledVersion] + ": " + ver + "\n\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-								appForm.append(s);
+								f.append(s);
 							} else {
 								s = new StringItem(null, "\n" + L[Version] + ": " + ver + "\n\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-								appForm.append(s);
+								f.append(s);
 							}
 							
 							if(appUrl != null && !ver.equals(last)) {
@@ -529,7 +544,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								s.setItemCommandListener(CatalogApp.this);
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-								appForm.append(s);
+								f.append(s);
 							}
 							
 							s = new StringItem(null, L[Launch], Item.BUTTON);
@@ -537,19 +552,19 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+							f.append(s);
 							
 							s = new StringItem(null, L[Uninstall], Item.BUTTON);
 							s.setDefaultCommand(uninstallCmd);
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+							f.append(s);
 						} else {
 							s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+							f.append(s);
 							
 							if(appUrl != null) {
 								s = new StringItem(null, L[Install], Item.BUTTON);
@@ -557,14 +572,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								s.setItemCommandListener(CatalogApp.this);
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-								appForm.append(s);
+								f.append(s);
 							}
 						}
 					} else {
 						s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-						appForm.append(s);
+						f.append(s);
 						
 						if(appUrl != null) {
 							s = new StringItem(null, L[Download], Item.BUTTON);
@@ -572,7 +587,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+							f.append(s);
 						}
 						
 						if(launchSupported) {
@@ -581,7 +596,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							s.setItemCommandListener(CatalogApp.this);
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							appForm.append(s);
+							f.append(s);
 						}
 					}
 				}
@@ -651,7 +666,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				categoriesList.addCommand(List.SELECT_COMMAND);
 				categoriesList.setCommandListener(this);
 				
-				JSONArray j = getArray(getUtf(URL + "categories.php?lang=" + lang + APIV));
+				JSONArray j = getArray(getUtf(URL + "categories.php?lang=" + lang + "&p=" + url(platform) + APIV));
 
 				JSONObject objs = j.getObject(1);
 				JSONArray list = j.getArray(0);
