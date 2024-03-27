@@ -33,8 +33,8 @@ import ru.nnproject.installerext.InstallerExtension;
 
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
 	
-	private static final String URL = "http://nnm.nnchan.ru/nns/";
-	private static final String EXTSIS_URL = "http://nnm.nnchan.ru/nns/nninstallerext.sis";
+	private static final String URL = "http://nnp.nnchan.ru/nns/";
+	private static final String EXTSIS_URL = "http://nnp.nnchan.ru/nns/nninstallerext.sis";
 	
 	private static final int RUN_CATALOG = 1;
 	private static final int RUN_CATALOG_ICONS = 2;
