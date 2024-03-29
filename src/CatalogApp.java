@@ -976,7 +976,49 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 
 	private static String getUtf(String url) throws IOException {
-		return new String(get(url), "UTF-8");
+		HttpConnection hc = null;
+		InputStream in = null;
+		try {
+			(hc = (HttpConnection) Connector.open(url))
+			.setRequestMethod("GET");
+			int i, j, k = 0;
+			if((i = hc.getResponseCode()) >= 400) {
+				throw new IOException("HTTP " + i);
+			}
+			String r;
+			while(i >= 300) {
+				if(++k > 3) {
+					throw new IOException("Too many redirects!");
+				}
+				if((r = hc.getHeaderField("Location")).startsWith("/")) {
+					r = url.substring(0, (j = url.indexOf("//") + 2)) + url.substring(j, url.indexOf("/", j)) + r;
+				}
+				hc.close();
+				(hc = (HttpConnection) Connector.open(r))
+				.setRequestMethod("GET");
+				if((i = hc.getResponseCode()) >= 400) {
+					throw new IOException("HTTP " + i);
+				}
+			}
+			in = hc.openInputStream();
+			byte[] buf = new byte[(i = (int) hc.getLength()) == -1 ? 1024 : i];
+			i = 0;
+			while ((j = in.read(buf, i, buf.length - i)) != -1) {
+				if(j == 0) {
+					System.arraycopy(buf, 0, buf = new byte[i + 2048], 0, i);
+					continue;
+				}
+				i += j;
+			}
+			return new String(buf, 0, i, "UTF-8");
+		} finally {
+			try {
+				if (in != null) in.close();
+			} catch (IOException e) {}
+			try {
+				if (hc != null) hc.close();
+			} catch (IOException e) {}
+		}
 	}
 	
 	// platform & compatibility
