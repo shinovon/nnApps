@@ -1,8 +1,9 @@
 Nokia-MIDlet-Background-Event: pause
-MIDlet-Vendor: nnproject
 MIDlet-Version: 0.4.0
+MIDlet-Vendor: nnproject
 MIDlet-Icon: /n.png
 MicroEdition-Configuration: CLDC-1.1
+Nokia-MIDlet-Launch-Params: app
 MIDlet-Name: nnhub
 MIDlet-1: nnhub,/n.png,CatalogApp
 MicroEdition-Profile: MIDP-2.0

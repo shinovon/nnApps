@@ -26,4 +26,6 @@ public interface LangConstants {
 	static final int Settings = 25;
 	static final int Language = 26;
 	static final int AppNotSupported = 27;
+	static final int UpdateAvailable = 28;
+	static final int NetworkError = 29;
 }
