@@ -89,7 +89,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static boolean launchSupported;
 	private static boolean j2meloader;
 	
-	private static Image listPlaceholderImg;
+//	private static Image listPlaceholderImg;
 	private static int listImgHeight;
 	
 	private static JSONArray catalog;
@@ -139,8 +139,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if("ru".equalsIgnoreCase(System.getProperty("user.language")) || (
 					(s = System.getProperty("microedition.locale")) != null &&
 					s.toLowerCase().indexOf("ru") != -1
-					)
-					) {
+					)) {
 				lang = "ru";
 			}
 		} catch (Exception e) {}
@@ -200,7 +199,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		try {
 			int p = display.getBestImageHeight(Display.LIST_ELEMENT);
 			if(p <= 0) p = 48;
-			listPlaceholderImg = resizeAppIcon(Image.createImage("/placeholder.png"), listImgHeight = p);
+			listImgHeight = p;
+//			listPlaceholderImg = resizeAppIcon(Image.createImage("/placeholder.png"), listImgHeight = p);
 		} catch (Exception e) {}
 		start(RUN_CATEGORIES);
 	}
@@ -309,7 +309,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setFont(Font.getFont(0, 0, Font.SIZE_LARGE));
 			s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_VCENTER);
 			f.append(s);
-			s = new StringItem(null, "Список приложений\n\n");
+			s = new StringItem(null, "Каталог приложений для J2ME от nnproject\n\n");
 			s.setFont(Font.getDefaultFont());
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
@@ -331,7 +331,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
 			f.append(s);
-			s = new StringItem(null, "\n\nс первым апреля\n\n292 labs");
+			s = new StringItem(null, "\n\n292 labs");
 			s.setFont(Font.getDefaultFont());
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
@@ -411,7 +411,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					if(symbianPatch && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
 						name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 					}
-					catalogList.append(name, listPlaceholderImg);
+					catalogList.append(name, null);
 				}
 				display(catalogList);
 				afterStart();
@@ -423,15 +423,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		case RUN_CATALOG_ICONS: { // load catalog icons
 			int i = -1;
-			int l = catalog.size();
+			JSONArray a = catalog;
+			List list = catalogList;
+			int l = a.size();
 			Image img;
 			try {
 				while(++i < l) {
-					if((img = getAppIcon(catalog.getObject(i).getString("id"), listImgHeight)) == null) continue;
-					catalogList.set(i, catalogList.getString(i), img);
+					if((img = getAppIcon(a.getObject(i).getString("id"), listImgHeight)) == null) continue;
+					list.set(i, list.getString(i), img);
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
 			}
 			return;
 		}
@@ -479,7 +480,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							ds = ((JSONObject)d).getString("en");
 					}
 				}
-				s = new StringItem(null, ds + "\n\n");
+				s = new StringItem(null, ds + "\n");
 				s.setFont(Font.getDefaultFont());
 				s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 				screenshotsIdx = f.append(s);
