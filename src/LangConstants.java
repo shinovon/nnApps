@@ -28,4 +28,9 @@ public interface LangConstants {
 	static final int AppNotSupported = 27;
 	static final int UpdateAvailable = 28;
 	static final int NetworkError = 29;
+	static final int AboutText = 30;
+	static final int DevelopedBy = 31;
+	static final int Web = 32;
+	static final int Donate = 33;
+	static final int Chat = 34;
 }
