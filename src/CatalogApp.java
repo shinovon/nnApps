@@ -732,14 +732,21 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				try {
 					JSONObject j = getObject(getUtf(URL + "check.php?t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform)));
 					if(j.getBoolean("update_available", false)) {
-						appUrl = j.getString("download_url");
+						String url = j.getString("download_url");
 						String msg = j.getString("message", L[UpdateAvailable]);
 						Alert a = new Alert(L[0]);
 						a.setType(AlertType.INFO);
 						a.setString(msg);
-						a.addCommand(dlCmd);
-						a.setCommandListener(this);
+						a.setTimeout(3000);
 						display(a);
+						Thread.sleep(2000);
+						if(symbianPatch) {
+							InstallerExtension.installApp(url);
+						} else {
+							platformRequest(url);
+						}
+						Thread.sleep(1000);
+						notifyDestroyed();
 					} else {
 						start(RUN_CATEGORIES);
 					}
