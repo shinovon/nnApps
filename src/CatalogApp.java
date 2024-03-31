@@ -129,10 +129,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String s;
 				if((s = (String) t.get("app")) != null) {
 					appLaunchInfo = new String[] {null, null, null, s};
-					appForm = new Form(L[0]);
-					appForm.addCommand(backCmd);
-					appForm.setCommandListener(this);
-					display(loadingAlert(L[Loading]), appForm);
+					final Form f = appForm = new Form(L[0]);
+					f.addCommand(backCmd);
+					f.setCommandListener(this);
+					display(loadingAlert(L[Loading]), f);
 					start(RUN_APP);
 					return;
 				}
@@ -227,10 +227,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if((i = ((List)d).getSelectedIndex()) == -1) return;
 			if(d == catalogList) {
 				final JSONObject app = catalog.getObject(i);
-				appForm = new Form(app.has("name") ? app.getString("name") : app.getString("suite"));
-				appForm.addCommand(backCmd);
-				appForm.setCommandListener(this);
-				display(loadingAlert(L[Loading]), appForm);
+				final Form f = appForm = new Form(app.has("name") ? app.getString("name") : app.getString("suite"));
+				f.addCommand(backCmd);
+				f.setCommandListener(this);
+				display(loadingAlert(L[Loading]), f);
 				start(RUN_CATALOG_APP);
 				return;
 			}
@@ -316,7 +316,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			return;
 		}
 		if(c == aboutCmd) {
-			Form f = new Form(L[About]);
+			final Form f = new Form(L[About]);
 			f.setCommandListener(this);
 			f.addCommand(backCmd);
 			
@@ -461,7 +461,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			app_img = catalogList.getImage(i);
 		}
 		case RUN_APP: { // load app form
-			Form f = appForm;
+			final Form f = appForm;
 			try {
 				if(app_id == null) app_id = appLaunchInfo[3];
 				JSONObject app = appJson = getObject(getUtf(URL + "app.php?id=" + app_id + "&lang=" + lang + APIV));
