@@ -129,6 +129,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String s;
 				if((s = (String) t.get("app")) != null) {
 					appLaunchInfo = new String[] {null, null, null, s};
+					appForm = new Form("Auto-start");
+					appForm.addCommand(backCmd);
+					appForm.setCommandListener(this);
+					display(loadingAlert(L[Loading]), appForm);
 					start(RUN_APP);
 					return;
 				}
@@ -227,7 +231,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appForm.addCommand(backCmd);
 				appForm.setCommandListener(this);
 				display(loadingAlert(L[Loading]), appForm);
-				start(RUN_APP);
+				start(RUN_CATALOG_APP);
 				return;
 			}
 			if(d == categoriesList) {
@@ -471,7 +475,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appLaunchInfo = new String[] {suite, vendor, uid, app_id};
 				
 				Form f = appForm;
-				f.append(appImageItem = new ImageItem(null, resizeAppIcon(app_img, 58), 
+				f.setTitle(app.has("name") ? app.getString("name") : app.getString("suite"));
+				
+				if(app_img != null)
+					f.append(appImageItem = new ImageItem(null, resizeAppIcon(app_img, 58), 
 						Item.LAYOUT_2 | Item.LAYOUT_LEFT, null));
 				
 				StringItem s;
