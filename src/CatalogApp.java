@@ -129,7 +129,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String s;
 				if((s = (String) t.get("app")) != null) {
 					appLaunchInfo = new String[] {null, null, null, s};
-					appForm = new Form("Auto-start");
+					appForm = new Form(L[0]);
 					appForm.addCommand(backCmd);
 					appForm.setCommandListener(this);
 					display(loadingAlert(L[Loading]), appForm);
@@ -461,6 +461,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			app_img = catalogList.getImage(i);
 		}
 		case RUN_APP: { // load app form
+			Form f = appForm;
 			try {
 				if(app_id == null) app_id = appLaunchInfo[3];
 				JSONObject app = appJson = getObject(getUtf(URL + "app.php?id=" + app_id + "&lang=" + lang + APIV));
@@ -474,7 +475,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				appUrl = app.getNullableString("dl");
 				appLaunchInfo = new String[] {suite, vendor, uid, app_id};
 				
-				Form f = appForm;
 				f.setTitle(app.has("name") ? app.getString("name") : app.getString("suite"));
 				
 				if(app_img != null)
@@ -626,9 +626,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				appForm.append(e.toString());
+				f.append(e.toString());
 			}
-			display(appForm);
+			display(f);
 			return;
 		}
 		case RUN_INSTALL: { // install
