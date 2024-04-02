@@ -392,6 +392,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(platformRequest(URL + appLaunchInfo[3] + "/" + ((ImageItem)item).getAltText()))
 					notifyDestroyed();
 			} catch (Exception e) {}
+			return;
+		}
+		if(c == hyperlinkCmd) {
+			try {
+				if(platformRequest("http://" + ((StringItem) item).getText()))
+					notifyDestroyed();
+			} catch (Exception e) {}
+			return;
 		}
 	}
 
