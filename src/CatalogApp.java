@@ -759,7 +759,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						start(RUN_CATEGORIES);
 					}
 				} catch (Exception e) {
-					warningAlert(L[NetworkError] + " \n\ndetails: " + e.toString());
+					display(warningAlert(L[NetworkError] + " \n\ndetails: " + e.toString()));
 					start(RUN_EXIT_TIMEOUT);
 				}
 				return;
