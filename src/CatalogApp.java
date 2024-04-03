@@ -48,7 +48,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final int RUN_CHECK = 10;
 	private static final int RUN_CATALOG_APP = 11;
 	
+	private static final String STAT_INSTALL = "1";
+	private static final String STAT_UNINSTALL = "2";
+	private static final String STAT_LAUNCH = "3";
+	
 	private static final String APIV = "&v=1";
+	private static final int SETTINGSV = 1;
 
 	private static final String SETTINGS_RECORDNAME = "nnappssets";
 
@@ -167,7 +172,29 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			lang = j.getString("lang", lang);
 		} catch (Exception e) {}
 		
-		loadLang();
+		try {
+			(L = new String[100])[0] = "nnhub";
+			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
+			StringBuffer s = new StringBuffer();
+			int c;
+			int i = 1;
+			while((c = r.read()) > 0) {
+				if(c == '\r') continue;
+				if(c == '\\') {
+					s.append((c = r.read()) == 'n' ? '\n' : (char) c);
+					continue;
+				}
+				if(c == '\n') {
+					L[i++] = s.toString();
+					s.setLength(0);
+					continue;
+				}
+				s.append((char) c);
+			}
+			r.close();
+		} catch (Exception e) {
+			throw new RuntimeException(lang);
+		}
 		
 		Form form;
 		rootScreen = form = new Form(L[0]);
@@ -212,16 +239,18 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 			}
 		} catch (Throwable e) {}
-		try {
-			int p = display.getBestImageHeight(Display.LIST_ELEMENT);
-			if(p <= 0) p = 48;
-			listImgHeight = p;
-//			listPlaceholderImg = resizeAppIcon(Image.createImage("/placeholder.png"), listImgHeight = p);
-		} catch (Exception e) {}
+		int p;
+		if((p = display.getBestImageHeight(Display.LIST_ELEMENT)) <= 0)
+			p = 48;
+		listImgHeight = p;
 		start(RUN_CHECK);
 	}
 
 	public void commandAction(Command c, Displayable d) {
+		if(c == exitCmd) {
+			notifyDestroyed();
+			return;
+		}
 		if(c == List.SELECT_COMMAND) {
 			int i;
 			if((i = ((List)d).getSelectedIndex()) == -1) return;
@@ -245,15 +274,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(d == settingsForm) { // save settings
 				lang = langChoice.getSelectedIndex() == 1 ? "en" : "ru";
 				try {
-					RecordStore.deleteRecordStore(SETTINGS_RECORDNAME);
-				} catch (Exception e) {
-				}
-				try {
 					JSONObject j = new JSONObject();
 					j.put("lang", lang);
+					j.put("v", SETTINGSV);
 					byte[] b = j.toString().getBytes("UTF-8");
 					RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, true);
-					r.addRecord(b, 0, b.length);
+					if(r.getNumRecords() > 0) {
+						r.setRecord(1, b, 0, b.length);
+					} else {
+						r.addRecord(b, 0, b.length);
+					}
 					r.closeRecordStore();
 				} catch (Exception e) {
 				}
@@ -274,10 +304,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				catalogList = null;
 			}
 			display(rootScreen);
-			return;
-		}
-		if(c == exitCmd) {
-			notifyDestroyed();
 			return;
 		}
 		if(c == cancelCmd) {
@@ -301,7 +327,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				launchApp();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
+				display(warningAlert(L[AppLaunchError].concat(": ").concat(e.toString())));
 			}
 			return;
 		}
@@ -361,7 +387,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			try {
 				if(installing) return;
 				if(appLaunchInfo != null)
-					stat("install", appLaunchInfo[3]);
+					stat(STAT_INSTALL, appLaunchInfo[3]);
 				if(symbianPatch) {
 					start(RUN_INSTALL);
 					return;
@@ -376,13 +402,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				launchApp();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[AppLaunchError] + ": " + e.toString()));
+				display(warningAlert(L[AppLaunchError].concat(": ").concat(e.toString())));
 			}
 			return;
 		}
 		if(c == uninstallCmd) {
 			if(installing) return;
-			stat("uninstall", appLaunchInfo[3]);
+			stat(STAT_UNINSTALL, appLaunchInfo[3]);
 			start(RUN_UNINSTALL);
 			return;
 		}
@@ -396,7 +422,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		}
 		if(c == hyperlinkCmd) {
 			try {
-				if(platformRequest("http://" + ((StringItem) item).getText()))
+				if(platformRequest("http://".concat(((StringItem) item).getText())))
 					notifyDestroyed();
 			} catch (Exception e) {}
 			return;
@@ -444,7 +470,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				afterStart();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[CatalogError] + ": " + e.toString()));
+				display(warningAlert(L[CatalogError].concat(": ").concat(e.toString())));
 				return;
 			}
 		}
@@ -549,7 +575,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						boolean installed = isAppInstalled(suite, vendor, uid);
 						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
 						
-						
 						if(installed) {
 							boolean needUpdate = !ver.equals(last);
 							
@@ -648,7 +673,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				refresh();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[InstallerError] + ": " + e.toString()), appForm);
+				display(warningAlert(L[InstallerError].concat(": ").concat(e.toString())), appForm);
 			}
 			installing = false;
 			return;
@@ -663,7 +688,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				refresh();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[InstallerError] + ": " + e.toString()), appForm);
+				display(warningAlert(L[InstallerError].concat(": ").concat(e.toString())), appForm);
 			}
 			installing = false;
 			return;
@@ -725,7 +750,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				afterStart();
 			} catch (Exception e) {
 				e.printStackTrace();
-				display(warningAlert(L[CatalogError] + ": " + e.toString()));
+				display(warningAlert(L[CatalogError].concat(": ").concat(e.toString())));
 			}
 			return;
 		}
@@ -759,7 +784,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						start(RUN_CATEGORIES);
 					}
 				} catch (Exception e) {
-					display(warningAlert(L[NetworkError] + " \n\ndetails: " + e.toString()));
+					display(warningAlert(L[NetworkError].concat(" \n\ndetails: ").concat(e.toString())));
 					start(RUN_EXIT_TIMEOUT);
 				}
 				return;
@@ -884,7 +909,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	private void launchApp() throws Exception {
-		stat("launch", appLaunchInfo[3]);
+		stat(STAT_LAUNCH, appLaunchInfo[3]);
 		String arg = "from=nnstore";
 		if(appLaunchInfo[0] == null) { // native app
 			if(!symbianJrt) return;
@@ -904,36 +929,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			return resizeAppIcon(getImage(URL + id + "/default.png"), size);
 		} catch (Exception e) {}
 		return null;
-	}
-	
-	private static void loadLang() {
-		try {
-			(L = new String[100])[0] = "nnhub";
-			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
-			StringBuffer s = new StringBuffer();
-			int c;
-			
-			int i = 1;
-			for(;;) {
-				c = r.read();
-				if(c <= 0) break;
-				if(c == '\r') continue;
-				if(c == '\\') {
-					c = (char) r.read();
-					s.append(c == 'n' ? '\n' : c);
-					continue;
-				}
-				if(c == '\n') {
-					L[i++] = s.toString();
-					s.setLength(0);
-					continue;
-				}
-				s.append((char) c);
-			}
-			r.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 	
 	private static void stat(String type, String id) {
@@ -1008,7 +1003,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	private static byte[] get(String url) throws IOException {
-		System.out.println("GET " + url);
 		HttpConnection hc = null;
 		InputStream in = null;
 		try {
@@ -1080,7 +1074,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static HttpConnection open(String url) throws IOException {
 		HttpConnection hc = (HttpConnection) Connector.open(url);
 		hc.setRequestMethod("GET");
-		hc.setRequestProperty("X-Version", "nnhub/" + version);
+		hc.setRequestProperty("X-User-Agent", "nnstore/" + version);
 		return hc;
 	}
 
