@@ -1180,11 +1180,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						r = System.getProperty("microedition.location.version") != null ||
 								checkClass("com.arm.cldc.mas.GlobalLock");
 						if(!plus)
-							r &= platform.indexOf("java") == -1;
+							r &= platform.indexOf("java") == -1 && System.getProperty("com.nokia.mid.ui.version") == null;
 						break;
 					}
 					if(c.startsWith("s40a")) {
-						r = platform.indexOf("java") != -1;
+						String s = System.getProperty("com.nokia.mid.ui.version");
+						r = !symbian3 && s != null && s.length() == 3 && s.charAt(0) == '1' && s.charAt(2) > '2' && s.charAt(2) < '7';
 						break;
 					}
 				}
@@ -1197,14 +1198,17 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					break;
 				}
 				if(c.startsWith("s60v5")) {
-					r = c.endsWith("+") ? platform.indexOf("version=5.") != -1 : platform.indexOf("version=5.0") != -1;
+					r = symbianJrt && c.endsWith("+") ? platform.indexOf("version=5.") != -1 : platform.indexOf("version=5.0") != -1;
 					break;
 				}
 				if("belle".equals(c)) {
 					r = symbian3 && platform.charAt(platform.indexOf("version=5.") + 10) > '2';
 					break;
 				}
-				if("asha".equals(c)) { // TODO
+				if("asha".equals(c)) {
+					String s = System.getProperty("com.nokia.mid.ui.version");
+					r = !symbian3 && s != null && s.length() == 3 && (s.charAt(0) == '2' || s.charAt(2) > '6');
+					break;
 				}
 				System.out.println("Undefined compatibility flag: " + c);
 				return false;
