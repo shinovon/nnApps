@@ -1049,14 +1049,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 			}
 			in = hc.openInputStream();
-			byte[] buf = new byte[(i = (int) hc.getLength()) == -1 ? 1024 : i];
+			byte[] buf = new byte[(i = (int) hc.getLength()) <= 0 ? 1024 : i];
 			i = 0;
-			while ((j = in.read(buf, i, buf.length - i)) != -1) {
-				if(j == 0) {
+			while((j = in.read(buf, i, buf.length - i)) != -1) {
+				if((i += j) == buf.length) {
 					System.arraycopy(buf, 0, buf = new byte[i + 2048], 0, i);
-					continue;
 				}
-				i += j;
 			}
 			return new String(buf, 0, i, "UTF-8");
 		} finally {
