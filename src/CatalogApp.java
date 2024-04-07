@@ -56,6 +56,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final int SETTINGSV = 1;
 
 	private static final String SETTINGS_RECORDNAME = "nnappssets";
+	
+	private static final String JAVAAPP_PROTOCOL = "localapp://jam/launch?";
+	private static final String LOCALAPP_URL = URL + "localapp.php?";
 
 	private static String[] L;
 
@@ -910,16 +913,29 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private void launchApp() throws Exception {
 		stat(STAT_LAUNCH, appLaunchInfo[3]);
-		String arg = "from=nnstore";
 		if(appLaunchInfo[0] == null) { // native app
 			if(!symbianJrt) return;
 			if(platformRequest("nativeapp:application-uid=" + appLaunchInfo[2]))
 				notifyDestroyed();
 		} else if(appLaunchInfo[2] != null && symbian3) {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";" + arg))
+			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";launchfrom=nnstore"))
 				notifyDestroyed();
 		} else {
-			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-vendor=" + url(appLaunchInfo[1]) + ";midlet-name=" + url(appLaunchInfo[0]) + ";midlet-n=1;midlet-args="))
+			if(s40()) {
+				platformRequest(LOCALAPP_URL +
+						"name=" + url(appLaunchInfo[0]) +
+						"&vendor=" + url(appLaunchInfo[1]) +
+						"&id=" + url(appLaunchInfo[3]) +
+						"&id=" + url(appLaunchInfo[3]) +
+						"&from=nnstore"
+						);
+				notifyDestroyed();
+				return;
+			}
+			if(platformRequest(JAVAAPP_PROTOCOL +
+					"midlet-vendor=" + url(appLaunchInfo[1]) +
+					";midlet-name=" + url(appLaunchInfo[0]) +
+					";launchfrom=nnstore"))
 				notifyDestroyed();
 		}
 	}
@@ -1183,6 +1199,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					}
 					if(c.startsWith("s40a")) {
 						String s = System.getProperty("com.nokia.mid.ui.version");
+						// FIXME: s40 nokia ui version
 						r = !symbian3 && s != null && s.length() == 3 && s.charAt(0) == '1' && s.charAt(2) > '2' && s.charAt(2) < '7';
 						break;
 					}
@@ -1354,8 +1371,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	// midletintegration
-	
-	private static final String JAVAAPP_PROTOCOL = "localapp://jam/launch?";
 	
 	private static int instances;
 	private static boolean receiving;
