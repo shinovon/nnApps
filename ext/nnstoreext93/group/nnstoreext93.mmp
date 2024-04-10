@@ -44,6 +44,7 @@ LIBRARY apgrfx.lib
 LIBRARY libc.lib
 LIBRARY javaregistryclient.lib
 LIBRARY sisregistryclient.lib
+LIBRARY ws32.lib
 
 CAPABILITY		all -tcb 
 

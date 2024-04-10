@@ -16,6 +16,8 @@
 #include <ApaCmdLn.h>
 #include "sisregistrysession.h"
 #include "sisregistryentry.h"
+#include <w32std.h>
+#include <apgtask.h>
 
 using std::wstring;
 using namespace Swi;
@@ -111,27 +113,37 @@ JNIEXPORT jint JNICALL Java_ru_nnproject_installerext_InstallerExtension__1launc
 	(JNIEnv *aEnv, jobject aThis, jint aUid)
 {
 	TUid uid = {aUid};
-	TApaAppInfo appInfo;
-	RApaLsSession session;
 	
-	TInt err;
-	
-	err = session.Connect();
-	
+	RWsSession ws;
+	TInt err = ws.Connect();
 	if (err != KErrNone) {
 		return err;
 	}
-	
-	err = session.GetAppInfo(appInfo, uid);
-	
-	if (err == KErrNone) {
-		CApaCommandLine* cli = CApaCommandLine::NewL();
-		cli->SetExecutableNameL(appInfo.iFullName);
-		err = session.StartApp(*cli);
-		delete cli;
+	TApaTaskList tasklist(ws);
+	TApaTask task = tasklist.FindApp(uid);
+	if(task.Exists()) {
+		task.BringToForeground();
+		ws.Close();
+	} else {
+		ws.Close();
+		TApaAppInfo appInfo;
+		RApaLsSession session;
+		
+		err = session.Connect();
+		if (err != KErrNone) {
+			return err;
+		}
+		
+		err = session.GetAppInfo(appInfo, uid);
+		if (err == KErrNone) {
+			CApaCommandLine* cli = CApaCommandLine::NewL();
+			cli->SetExecutableNameL(appInfo.iFullName);
+			err = session.StartApp(*cli);
+			delete cli;
+		}
+		
+		session.Close();
 	}
-	
-	session.Close();
 	return err;
 }
 

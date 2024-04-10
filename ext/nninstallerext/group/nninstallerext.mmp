@@ -58,6 +58,7 @@ LIBRARY javautils.dso
 LIBRARY	apparc.lib
 LIBRARY apgrfx.lib
 LIBRARY sisregistryclient.lib
+LIBRARY ws32.lib
 
 CAPABILITY		all -tcb 
 

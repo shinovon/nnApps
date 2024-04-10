@@ -618,12 +618,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						f.append(s);
 					}
 				} else {
-					if(symbianPatchLoaded || symbianPatch93Loaded) { // Symbian with extension installed
+					if(symbianPatchLoaded || symbianPatch93Loaded) {
+						// Symbian with extension installed
 						boolean installed = isAppInstalled(suite, vendor, uid);
 						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
 						
 						if(installed) {
-							boolean needUpdate = !last.equals(ver);
+							boolean needUpdate = last != null && !last.equals(ver);
 							
 							if(needUpdate) {
 								s = new StringItem(null, "\n" + L[LatestVersion] + ": " + last + "\n");
@@ -631,7 +632,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 								f.append(s);
 								
-								s = new StringItem(null, (ver != null ? (L[InstalledVersion] + ": " + ver) : L[Installed]) + "\n\n");
+								s = new StringItem(null,
+										// version may be unknown
+										(ver != null ? (L[InstalledVersion] + ": " + ver) : L[Installed]) + "\n\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 								f.append(s);
@@ -805,13 +808,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			}
 			return;
 		}
-		case RUN_EXIT_TIMEOUT:
+		case RUN_EXIT_TIMEOUT: // выход по таймауту
 			try {
 				Thread.sleep(5000);
 			} catch (Exception e) {}
 			notifyDestroyed();
 			return;
-		case RUN_CHECK: {
+		case RUN_CHECK: { // проверка обновлений и стата
 			if(statType == null) {
 				try {
 					JSONObject j = getObject(getUtf(URL + "check.php?t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform)));
@@ -825,6 +828,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						display(a);
 						Thread.sleep(2000);
 						if(symbianPatchLoaded) {
+							// TODO ?
 							InstallerExtension.installApp(url);
 						} else {
 							platformRequest(url);
