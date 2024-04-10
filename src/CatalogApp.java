@@ -30,11 +30,13 @@ import javax.microedition.midlet.MIDlet;
 import javax.microedition.rms.RecordStore;
 
 import ru.nnproject.installerext.InstallerExtension;
+import ru.nnproject.installerext.InstallerExtension_93;
 
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
 	
 	private static final String URL = "http://nnp.nnchan.ru/nns/";
-	private static final String EXTSIS_URL = "http://nnp.nnchan.ru/nns/nninstallerext.sis";
+	private static final String EXTSIS_URL = URL + "nninstallerext.sis";
+	private static final String EXTSIS93_URL = URL + "nnstoreext93.sis";
 	
 	private static final int RUN_CATALOG = 1;
 	private static final int RUN_CATALOG_ICONS = 2;
@@ -52,7 +54,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final String STAT_UNINSTALL = "2";
 	private static final String STAT_LAUNCH = "3";
 	
-	private static final String APIV = "&v=1";
+	private static final String APIV = "&v=2";
 	private static final int SETTINGSV = 1;
 
 	private static final String SETTINGS_RECORDNAME = "nnappssets";
@@ -94,9 +96,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static String platform;
 	private static boolean symbianJrt;
 	private static boolean symbian3;
+	private static boolean symbianJrt1;
 	private static boolean symbianPatch;
+	private static boolean symbianPatch93;
 	private static boolean launchSupported;
 	private static boolean j2meloader;
+	private static boolean s60; // <= s60v3
+	private static boolean s40;
 	
 //	private static Image listPlaceholderImg;
 	private static int listImgHeight;
@@ -132,18 +138,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 
 	protected void startApp() {
 		if(started) {
+			// check if launched with midletintegration
 			if(checkLaunch()) {
-				Hashtable t = parseArgs(getLaunchCommand());
-				String s;
-				if((s = (String) t.get("app")) != null) {
-					appLaunchInfo = new String[] {null, null, null, s};
-					final Form f = appForm = new Form(L[0]);
-					f.addCommand(backCmd);
-					f.setCommandListener(this);
-					display(loadingAlert(L[Loading]), f);
-					start(RUN_APP);
-					return;
-				}
+				integrationStart();
 			} else {
 				start(RUN_REFRESH);
 			}
@@ -153,10 +150,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		display = Display.getDisplay(this);
 		version = getAppProperty("MIDlet-Version");
 		
+		// защита 292 уровня
 		if(!"nnhub".equals(getAppProperty("MIDlet-Name")) ||
 				!"nnproject".equals(getAppProperty("MIDlet-Vendor")))
 			throw new RuntimeException();
 		
+		// check system locale
 		try {
 			String s;
 			if("ru".equalsIgnoreCase(System.getProperty("user.language")) || (
@@ -175,8 +174,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			lang = j.getString("lang", lang);
 		} catch (Exception e) {}
 		
+		// load locale
 		try {
-			(L = new String[100])[0] = "nnhub";
+			(L = new String[50])[0] = "nnhub";
 			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
 			StringBuffer s = new StringBuffer();
 			int c;
@@ -196,6 +196,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			}
 			r.close();
 		} catch (Exception e) {
+			// crash on fail
 			throw new RuntimeException(lang);
 		}
 		
@@ -220,6 +221,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		cancelCmd = new Command(L[Cancel], Command.CANCEL, 1);
 		installExtCmd = new Command(L[Install], Command.OK, 1);
 		
+		// platform checks
 		try {
 			String plat = System.getProperty("microedition.platform");
 			if(plat == null) {
@@ -227,7 +229,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			} else {
 				platform = plat;
 				symbianJrt = plat.indexOf("platform=S60") != -1;
-				symbian3 = symbianJrt && plat.indexOf("java_build_version=2") != -1; 
+				if(!(symbianJrt1 = symbianJrt && plat.indexOf("java_build_version=1") != -1))
+					symbian3 = symbianJrt && plat.indexOf("java_build_version=2") != -1; 
 				if(!(launchSupported = plat.toLowerCase().startsWith("nokia"))) {
 					try {
 						Class.forName("javax.microedition.shell.MicroActivity"); // j2me loader check
@@ -235,18 +238,44 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					} catch (Exception e) {}
 				}
 				if(symbianJrt) {
-					Class.forName("ru.nnproject.installerext.InstallerExtension");
-					System.out.println("ext found");
-					InstallerExtension.init();
-					symbianPatch = true;
+					if(symbianJrt1) {
+						Class.forName("ru.nnproject.installerext.InstallerExtension_93");
+						System.out.println("ext 93 found");
+						symbianPatch93 = true;
+					} else {
+						Class.forName("ru.nnproject.installerext.InstallerExtension");
+						System.out.println("ext found");
+						InstallerExtension.init();
+						symbianPatch = true;
+					}
 				}
+				s60 = s60();
+				s40 = s40();
 			}
-		} catch (Throwable e) {}
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
+		// 
 		int p;
 		if((p = display.getBestImageHeight(Display.LIST_ELEMENT)) <= 0)
 			p = 48;
 		listImgHeight = p;
+		if(checkLaunch()) integrationStart();
 		start(RUN_CHECK);
+	}
+
+	private void integrationStart() {
+		Hashtable t = parseArgs(getLaunchCommand());
+		String s;
+		if((s = (String) t.get("app")) != null) {
+			appLaunchInfo = new String[] {null, null, null, s};
+			final Form f = appForm = new Form(L[0]);
+			f.addCommand(backCmd);
+			f.setCommandListener(this);
+			display(loadingAlert(L[Loading]), f);
+			start(RUN_APP);
+			return;
+		}
 	}
 
 	public void commandAction(Command c, Displayable d) {
@@ -316,7 +345,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if(c == installExtCmd) {
 			try {
 				display(rootScreen);
-				if(platformRequest(EXTSIS_URL))
+				if(platformRequest(symbian3 ? EXTSIS_URL : EXTSIS93_URL))
 					notifyDestroyed();
 			} catch (Exception e) {}
 			return;
@@ -391,7 +420,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(installing) return;
 				if(appLaunchInfo != null)
 					stat(STAT_INSTALL, appLaunchInfo[3]);
-				if(symbianPatch) {
+				if(symbianPatch /*|| symbianPatch93*/) {
 					start(RUN_INSTALL);
 					return;
 				}
@@ -456,7 +485,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				catalogList.setCommandListener(this);
 				catalogList.setFitPolicy(Choice.TEXT_WRAP_ON);
 				
-				catalog = getArray(getUtf(URL + (c == null ? "catalog.php?lang=" + lang + APIV : "catalog.php?c=" + c + "&lang=" + lang + "&p=" + url(platform) + APIV)));
+				catalog = getArray(getUtf(URL + (c == null ?
+						"catalog.php?lang=" + lang + APIV :
+							"catalog.php?c=" + c + "&lang=" + lang + "&p=" + url(platform) +
+							(s60 || symbianJrt ? (symbian3 ? "&s60=3" : "&s60=1") : (s40 ? "&s40=1" : "")) +
+							APIV
+							)));
 				
 				int l = catalog.size();
 				int i = 0;
@@ -464,9 +498,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					JSONObject app = catalog.getObject(i++);
 					String name = app.has("name") ? app.getString("name") : app.getString("suite");
 					String v;
-					if(symbianPatch && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
-						name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
+					if(symbianPatch || symbianPatch93) {
+						if((v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
+							name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
+						}
 					}
+//					else if(symbianPatch93 && isAppInstalled(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) {
+						// can't check version on 93
+//						name = name + "\n" + L[installed];
+//					}
 					catalogList.append(name, null);
 				}
 				display(catalogList);
@@ -507,7 +547,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				String vendor = app.getString("vendor");
 				String uid = app.getNullableString("uid");
 				
-//				int type = app.getInt("type", 0);
+				int type = app.getInt("type", 0); // мидлет или сис
 				
 				appUrl = app.getNullableString("dl");
 				appLaunchInfo = new String[] {suite, vendor, uid, app_id};
@@ -560,7 +600,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					if(c.length() > 0) supported &= compatibility(c);
 				}
 				if(!supported) {
-					s = new StringItem(null, "\n" + L[AppNotSupported] + "\n\n" + L[LastVersion] + ": " + last + "\n\n");
+					s = new StringItem(null, "\n" + L[AppNotSupported] + "\n\n" + L[LatestVersion] + ": " + last + "\n\n");
 					s.setFont(Font.getDefaultFont());
 					s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 					f.append(s);
@@ -574,32 +614,32 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						f.append(s);
 					}
 				} else {
-					if(symbianPatch) {
+					if(symbianPatch || symbianPatch93) { // Symbian with extension installed
 						boolean installed = isAppInstalled(suite, vendor, uid);
 						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
 						
 						if(installed) {
-							boolean needUpdate = !ver.equals(last);
+							boolean needUpdate = !last.equals(ver);
 							
 							if(needUpdate) {
-								s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n");
+								s = new StringItem(null, "\n" + L[LatestVersion] + ": " + last + "\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 								f.append(s);
 								
-								s = new StringItem(null, L[InstalledVersion] + ": " + ver + "\n\n");
+								s = new StringItem(null, (ver != null ? (L[InstalledVersion] + ": " + ver) : L[Installed]) + "\n\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 								f.append(s);
 							} else {
-								s = new StringItem(null, "\n" + L[Version] + ": " + ver + "\n\n");
+								s = new StringItem(null, "\n" + L[ver == null ? LatestVersion : Version] + ": " + ver + "\n" + L[LatestVersionInstalled] + "\n\n");
 								s.setFont(Font.getDefaultFont());
 								s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 								f.append(s);
 							}
 							
-							if(appUrl != null && !ver.equals(last)) {
-								s = new StringItem(null, L[Update], Item.BUTTON);
+							if(appUrl != null && (ver == null || needUpdate)) {
+								s = new StringItem(null, L[ver == null ? Download : Update], Item.BUTTON);
 								s.setDefaultCommand(dlCmd);
 								s.setItemCommandListener(CatalogApp.this);
 								s.setFont(Font.getDefaultFont());
@@ -607,27 +647,31 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								f.append(s);
 							}
 							
-							s = new StringItem(null, L[Launch], Item.BUTTON);
-							s.setDefaultCommand(launchCmd);
-							s.setItemCommandListener(CatalogApp.this);
-							s.setFont(Font.getDefaultFont());
-							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							f.append(s);
+							if(symbian3 || symbianPatch93) {
+								s = new StringItem(null, L[Launch], Item.BUTTON);
+								s.setDefaultCommand(launchCmd);
+								s.setItemCommandListener(CatalogApp.this);
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								f.append(s);
+							}
 							
-							s = new StringItem(null, L[Uninstall], Item.BUTTON);
-							s.setDefaultCommand(uninstallCmd);
-							s.setItemCommandListener(CatalogApp.this);
-							s.setFont(Font.getDefaultFont());
-							s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
-							f.append(s);
+							if(!symbianPatch93 && type == 0) {
+								s = new StringItem(null, L[Uninstall], Item.BUTTON);
+								s.setDefaultCommand(uninstallCmd);
+								s.setItemCommandListener(CatalogApp.this);
+								s.setFont(Font.getDefaultFont());
+								s.setLayout(Item.LAYOUT_EXPAND | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
+								f.append(s);
+							}
 						} else {
-							s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
+							s = new StringItem(null, "\n" + L[LatestVersion] + ": " + last + "\n\n");
 							s.setFont(Font.getDefaultFont());
 							s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 							f.append(s);
 							
 							if(appUrl != null) {
-								s = new StringItem(null, L[Install], Item.BUTTON);
+								s = new StringItem(null, L[symbianPatch ? Install : Download], Item.BUTTON);
 								s.setDefaultCommand(dlCmd);
 								s.setItemCommandListener(CatalogApp.this);
 								s.setFont(Font.getDefaultFont());
@@ -635,8 +679,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								f.append(s);
 							}
 						}
-					} else {
-						s = new StringItem(null, "\n" + L[LastVersion] + ": " + last + "\n\n");
+					} else if(type != 1 || s60 || symbianJrt) { // without extension
+						s = new StringItem(null, "\n" + L[LatestVersion] + ": " + last + "\n\n");
 						s.setFont(Font.getDefaultFont());
 						s.setLayout(Item.LAYOUT_LEFT | Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER);
 						f.append(s);
@@ -650,7 +694,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							f.append(s);
 						}
 						
-						if(launchSupported) {
+						if((type == 0 && launchSupported && !symbianPatch93) || (type == 1 && symbianPatch93)) {
 							s = new StringItem(null, L[Launch], Item.BUTTON);
 							s.setDefaultCommand(launchCmd);
 							s.setItemCommandListener(CatalogApp.this);
@@ -740,7 +784,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					String c = list.getString(i++);
 					JSONObject o = objs.getObject(c);
 					
-					if(o.getBoolean("sym", false) && !symbianJrt) // symbian only
+					if(o.getBoolean("sym", false) && !symbianJrt && !s60) // symbian only
 						continue;
 					
 					Object n = o.get("name");
@@ -801,11 +845,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 
 	private static void afterStart() {
-		if(!symbian3 || symbianPatch || warnShown) return;
+		if(!symbianJrt || symbianPatch || symbianPatch93 || warnShown) return;
 		warnShown = true;
 		Alert a = new Alert("");
 		a.setType(AlertType.INFO);
-		a.setString(L[SymbianExtensionAlert]);
+		a.setString(L[Symbian3ExtensionAlert]);
 		a.setCommandListener(midlet);
 		a.addCommand(cancelCmd);
 		a.addCommand(installExtCmd);
@@ -884,9 +928,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static boolean isAppInstalled(String suite, String vendor, String uid) {
 		try {
+			if(symbianPatch93) {
+				return InstallerExtension_93.isInstalled(suite, vendor, uid);
+			}
 			if(suite == null) { // native app TODO
-				return false;
-//				return InstallerExtension.isInstalled(null, vendor, uid);
+//				return false;
+				return InstallerExtension.isInstalled(null, vendor, uid);
 			}
 			return InstallerExtension.isInstalled(suite, vendor, null);
 		} catch (Throwable e) {
@@ -897,9 +944,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static String getInstalledVersion(String suite, String vendor, String uid) {
 		try {
-			if(suite == null) { // native app TODO
-				return "1.0.0";
-//				return InstallerExtension.getVersion(null, vendor, uid);
+			if(symbianPatch93) {
+				return InstallerExtension_93.getVersion(suite, vendor, uid);
+			}
+			if(suite == null) { // native app
+				return InstallerExtension.getVersion(null, vendor, uid);
 			}
 			String s = InstallerExtension.getVersion(suite, vendor, null);
 			if(s != null && s.indexOf('.') == s.lastIndexOf('.'))
@@ -913,6 +962,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private void launchApp() throws Exception {
 		stat(STAT_LAUNCH, appLaunchInfo[3]);
+		if(symbianPatch93) {
+			// TEST
+			try {
+				InstallerExtension_93.launchApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
+			} catch (Error e) {
+				e.printStackTrace();
+			}
+			return;
+		}
 		if(appLaunchInfo[0] == null) { // native app
 			if(!symbianJrt) return;
 			if(platformRequest("nativeapp:application-uid=" + appLaunchInfo[2]))
@@ -921,7 +979,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(platformRequest(JAVAAPP_PROTOCOL + "midlet-uid=" + appLaunchInfo[2] + ";launchfrom=nnstore"))
 				notifyDestroyed();
 		} else {
-			if(s40()) {
+			if(s40) {
 				platformRequest(LOCALAPP_URL +
 						"name=" + url(appLaunchInfo[0]) +
 						"&vendor=" + url(appLaunchInfo[1]) +
@@ -932,6 +990,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				notifyDestroyed();
 				return;
 			}
+			// todo push support?
 			if(platformRequest(JAVAAPP_PROTOCOL +
 					"midlet-vendor=" + url(appLaunchInfo[1]) +
 					";midlet-name=" + url(appLaunchInfo[0]) +
@@ -1128,7 +1187,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 			case 3:
 				if("s60".equals(c)) {
-					r = symbianJrt || s60();
+					r = symbianJrt || s60;
 					break;
 				}
 				if("s94".equals(c)) {
@@ -1140,12 +1199,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					break;
 				}
 				if("s92".equals(c)) {
-					r = !symbianJrt && s60() &&
+					r = !symbianJrt && s60 &&
 							System.getProperty("microedition.amms.version") != null;
 					break;
 				}
 				if("s91".equals(c)) {
-					r = !symbianJrt && s60() &&
+					r = !symbianJrt && s60 &&
 							System.getProperty("microedition.amms.version") == null &&
 							(
 									System.getProperty("microedition.sip.version") != null ||
@@ -1154,7 +1213,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					break;
 				}
 				if("s40".equals(c)) {
-					r = s40();
+					r = s40;
 					break;
 				}
 				if("sjp".equals(c)) {
@@ -1175,7 +1234,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				}
 			default:
 				if(c.startsWith("s40")) {
-					if(!s40()) break;
+					if(!s40) break;
 					boolean plus = c.endsWith("+");
 					if(c.startsWith("s40v3")) {
 						r = checkClass("com.nokia.mid.pri.PriAccess") ||
@@ -1205,7 +1264,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					}
 				}
 				if(c.startsWith("s60v3")) {
-					if(!s60()) break;
+					if(!s60) break;
 					r = System.getProperty("microedition.sip.version") != null ||
 							checkClass("javax.crypto.Cipher");
 					if(!c.endsWith("+"))
@@ -1376,23 +1435,30 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static boolean receiving;
 	
 	/**
-	 * Checks if a MIDlet has received a new start request from another MIDlet<br>
-	 * Recommended to use in startApp() with "Nokia-MIDlet-Background-Event: pause" property in MANIFEST.MF<br>
-	 * After receiving a request, you should receive arguments from getLaunchCommand()
-	 * @see {@link #getLaunchCommand()}
+	 * Checks if a MIDlet has received a new start request from other MIDlet<br>
+	 * It is recommended to use in startApp() with "Nokia-MIDlet-Background-Event: pause" property in application descriptor<br>
+	 * <p>
+	 * After handling a request, you may get launch command by {@link #getLaunchCommand()}
+	 * </p>
 	 * @return true if new arguments have been received since the last check
 	 */
-	static boolean checkLaunch() {
+	public static boolean checkLaunch() {
 		if(receiving) return false;
 		try {
+			// Check if there is push request
 			if(PushRegistry.listConnections(true).length > 0) {
 				return true;
 			}
 		} catch (Throwable e) {
 		}
+		if(s40) {
+			// MIDlet on S40 can be launched only once during its life cycle
+			return (instances++) == 0 && System.getProperty("launchcmd") != null;
+		}
 		if(System.getProperty("com.nokia.mid.cmdline.instance") == null) {
 			return false;
 		}
+		// Symbian^3 method
 		try {
 			int i = Integer.parseInt(System.getProperty("com.nokia.mid.cmdline.instance"));
 			if(i > instances) {
@@ -1407,39 +1473,64 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	/**
-	 * Gets received command
+	 * Get received command
 	 * 
-	 * @see {@link #checkLaunch()}
-	 * @see {@link java.lang.System#getProperty(String)}
-	 * @return Received command
+	 * @return Received command, may be empty string
+	 * <br>null if launch was not detected
 	 */
-	static String getLaunchCommand() {
+	public static String getLaunchCommand() {
 		receiving = true;
-		String args = null;
-		String[] arr = null;
+		String cmd = null;
+		String[] connections = null;
 		try {
-			arr = PushRegistry.listConnections(true);
+			connections = PushRegistry.listConnections(true);
 		} catch (Throwable e) {
 		}
-		if(arr != null && arr.length > 0) {
+		if(connections != null && connections.length > 0) {
+			// Read push data
 			try {
-				DatagramConnection conn = (DatagramConnection) Connector.open(arr[0]);
+				DatagramConnection conn = (DatagramConnection) Connector.open(connections[0]);
 				Datagram data = conn.newDatagram(conn.getMaximumLength());
 				conn.receive(data);
-				args = data.readUTF();
+				cmd = data.readUTF();
 				conn.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (Exception e) {
 			}
 		} else {
-			args = System.getProperty("com.nokia.mid.cmdline");
+			cmd = System.getProperty("com.nokia.mid.cmdline");
+			if(cmd == null) {
+				cmd = System.getProperty("launchcmd");
+			}
 		}
-		if("empty=1".equals(args)) {
-			args = "";
+		if("empty=1".equals(cmd)) {
+			cmd = "";
 		}
 		receiving = false;
-		return args;
+		return cmd;
+	}
+	
+	/**
+	 * Get launch source
+	 * 
+	 * @see {@link #getLaunchCommand()}
+	 * @return Launcher app, may be null
+	 * @since 1.3
+	 */
+	public static String getLaunchSource() {
+		String r = null;
+		l: {
+			if((r = System.getProperty("launchfrom")) != null)
+				break l;
+			int i;
+			if((r = System.getProperty("com.nokia.mid.cmdline")) != null && (i = r.indexOf("launchfrom=")) != -1) {
+				r = r.substring(i + 5, (i = r.indexOf(';', i)) != -1 ? i : r.length());
+				break l;
+			}
+			return null;
+		}
+		return r;
 	}
 	
 	static Hashtable parseArgs(String str) {

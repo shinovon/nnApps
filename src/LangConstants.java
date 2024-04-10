@@ -1,7 +1,7 @@
 public interface LangConstants {
 	static final int Loading = 1;
 	static final int Catalog = 2;
-	static final int LastVersion = 3;
+	static final int LatestVersion = 3;
 	static final int InstalledVersion = 4;
 	static final int Version = 5;
 	static final int Update = 6;
@@ -17,7 +17,7 @@ public interface LangConstants {
 	static final int Cancel = 16;
 	static final int AppLaunchError = 17;
 	static final int CatalogError = 18;
-	static final int SymbianExtensionAlert = 19;
+	static final int Symbian3ExtensionAlert = 19;
 	static final int InstallerError = 20;
 	static final int NoDescription = 21;
 	static final int updateAvailable = 22;
@@ -33,4 +33,7 @@ public interface LangConstants {
 	static final int Web = 32;
 	static final int Donate = 33;
 	static final int Chat = 34;
+	static final int NativeApplication = 35;
+	static final int Installed = 36;
+	static final int LatestVersionInstalled = 37;
 }
