@@ -1,0 +1,12 @@
+&EN
+
+#{"nnhub S60v3 extension"},(0x20292B77),1,1,0
+
+[0x101F7961], 0, 0, 0, {"S60 3rd Edition devices"}
+[0x1028315F], 0, 0, 0, {"S60 5th Edition devices"}
+
+%{"nnproject"}
+:"nnproject"
+
+"$(EPOCROOT)Epoc32\release\$(PLATFORM)\$(TARGET)\nnstoreext93.dll"-"c:\sys\bin\nnstoreext93.dll"
+"G:\j2me_workspace\nnApps\ext\nnstoreext93.jar"-"c:\java\nnstoreext93.jar"

@@ -1,0 +1,56 @@
+/*
+============================================================================
+ Name		: nnstoreext93.mmp
+ Author	  : 
+ Copyright   : 
+ Description : This is the project specification file for nnstoreext93.
+============================================================================
+*/
+
+TARGET		  nnstoreext93.dll
+TARGETTYPE	  dll
+UID			 0x1000008d 0x20292B77
+
+EPOCALLOWDLLDATA
+
+
+// Qt Macros
+MACRO		UNICODE
+MACRO		RD_JAVA_SYMBIAN_TARGET
+MACRO		RD_JAVA_STDCPPV5
+MACRO		RD_JAVA_EPOCALLOWDLLDATA_FIX
+MACRO		RD_JAVA_HTTP_EMC_ENABLED
+MACRO		RD_JAVA_INSTALLERUI_ENABLED
+MACRO		RD_JAVA_PREWARM
+MACRO		RD_JAVA_MIDPRMS_DB
+MACRO		__SYMBIAN32__
+MACRO		J9EPOC32
+
+
+SYSTEMINCLUDE		../inc
+SYSTEMINCLUDE		../jrt_inc
+SYSTEMINCLUDE		/epoc32/include/stdapis
+SYSTEMINCLUDE		/epoc32/include/mw
+SYSTEMINCLUDE		/epoc32/include
+SYSTEMINCLUDE /epoc32/include/platform
+SYSTEMINCLUDE		.
+
+
+
+
+LIBRARY	euser.lib
+LIBRARY	apparc.lib
+LIBRARY apgrfx.lib
+LIBRARY libc.lib
+LIBRARY javaregistryclient.lib
+LIBRARY sisregistryclient.lib
+
+CAPABILITY		all -tcb 
+
+
+USERINCLUDE .
+
+DEFFILE ../eabi/nnstoreext93.def
+
+SOURCEPATH ..\src
+SOURCE InstallerExtension93.cpp lookup.cpp

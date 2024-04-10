@@ -1,0 +1,86 @@
+/*
+============================================================================
+ Name		: nninstallerext.mmp
+ Author	  : 
+ Copyright   : 
+ Description : This is the project specification file for nninstallerext.
+============================================================================
+*/
+
+TARGET		  nninstallerext.dll
+TARGETTYPE	  dll
+UID			 0x1000008d 0x20292B76
+
+EPOCALLOWDLLDATA
+
+
+// Qt Macros
+MACRO		UNICODE
+MACRO		QT_KEYPAD_NAVIGATION
+MACRO		QT_SOFTKEYS_ENABLED
+MACRO		QT_USE_MATH_H_FLOATS
+MACRO		RD_JAVA_SYMBIAN_TARGET
+MACRO		RD_JAVA_S60_RELEASE_9_2
+MACRO		RD_JAVA_S60_RELEASE_9_2_ONWARDS
+MACRO		RD_JAVA_S60_RELEASE_5_0_ONWARDS
+MACRO		RD_JAVA_STDCPPV5
+MACRO		RD_JAVA_EPOCALLOWDLLDATA_FIX
+MACRO		RD_JAVA_HTTP_EMC_ENABLED
+MACRO		RD_JAVA_NGA_ENABLED
+MACRO		RD_JAVA_PROXIMITY_LISTENER_ENABLED
+MACRO		RD_JAVA_PIM_MULTICAL_ENABLED
+MACRO		RD_JAVA_OPENC_BETA_PATCH
+MACRO		RD_JAVA_INSTALLERUI_ENABLED
+MACRO		RD_JAVA_PREWARM
+MACRO		RD_JAVA_ADVANCED_TACTILE_FEEDBACK
+MACRO		RD_JAVA_MIDPRMS_DB
+MACRO		__SYMBIAN32__
+MACRO		J9EPOC32
+
+
+SYSTEMINCLUDE		../inc
+SYSTEMINCLUDE		../jrt_inc
+SYSTEMINCLUDE		/epoc32/include/stdapis/stlportv5
+SYSTEMINCLUDE		/epoc32/include/mw
+SYSTEMINCLUDE		/epoc32/include
+SYSTEMINCLUDE /epoc32/include/platform
+SYSTEMINCLUDE		.
+
+
+
+
+LIBRARY	euser.lib
+LIBRARY libc.lib
+LIBRARY	libpthread.lib
+LIBRARY	libstdcppv5.lib
+LIBRARY	javalegacyutils.lib
+LIBRARY javautils.dso
+LIBRARY	apparc.lib
+LIBRARY apgrfx.lib
+LIBRARY sisregistryclient.lib
+
+CAPABILITY		all -tcb 
+
+OPTION CW -wchar_t on
+#if defined(ARMCC_4_0)
+OPTION ARMCC --import_all_vtbl
+#endif
+OPTION GCCE -fvisibility-inlines-hidden
+
+
+ARMFPU softvfp
+
+PAGED
+
+BYTEPAIRCOMPRESSTARGET
+
+USERINCLUDE .
+
+STDCPP
+
+DEFFILE ../eabi/nninstallerext.def
+
+
+
+SOURCEPATH ../src
+SOURCE lookup.cpp InstallerExtension.cpp
