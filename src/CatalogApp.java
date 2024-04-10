@@ -97,12 +97,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static boolean symbianJrt;
 	private static boolean symbian3;
 	private static boolean symbianJrt1;
-	private static boolean symbianPatch;
-	private static boolean symbianPatch93;
+	private static boolean symbianPatchLoaded;
+	private static boolean symbianPatch93Loaded;
 	private static boolean launchSupported;
 	private static boolean j2meloader;
 	private static boolean s60; // <= s60v3
 	private static boolean s40;
+	private static boolean symbianPatchClassFound;
 	
 //	private static Image listPlaceholderImg;
 	private static int listImgHeight;
@@ -241,12 +242,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					if(symbianJrt1) {
 						Class.forName("ru.nnproject.installerext.InstallerExtension_93");
 						System.out.println("ext 93 found");
-						symbianPatch93 = true;
+						symbianPatchClassFound = true;
+						symbianPatch93Loaded = InstallerExtension_93.getVersion() < 1;
 					} else {
 						Class.forName("ru.nnproject.installerext.InstallerExtension");
+						symbianPatchClassFound = true;
 						System.out.println("ext found");
 						InstallerExtension.init();
-						symbianPatch = true;
+						// если метода нет, то упадет эррор и все равно будет считаться что патч устарел
+						symbianPatchLoaded = InstallerExtension.getVersion() < 1;
 					}
 				}
 				s60 = s60();
@@ -420,7 +424,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(installing) return;
 				if(appLaunchInfo != null)
 					stat(STAT_INSTALL, appLaunchInfo[3]);
-				if(symbianPatch /*|| symbianPatch93*/) {
+				if(symbianPatchLoaded /*|| symbianPatch93*/) {
 					start(RUN_INSTALL);
 					return;
 				}
@@ -498,7 +502,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					JSONObject app = catalog.getObject(i++);
 					String name = app.has("name") ? app.getString("name") : app.getString("suite");
 					String v;
-					if(symbianPatch || symbianPatch93) {
+					if(symbianPatchLoaded || symbianPatch93Loaded) {
 						if((v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
 							name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 						}
@@ -614,7 +618,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						f.append(s);
 					}
 				} else {
-					if(symbianPatch || symbianPatch93) { // Symbian with extension installed
+					if(symbianPatchLoaded || symbianPatch93Loaded) { // Symbian with extension installed
 						boolean installed = isAppInstalled(suite, vendor, uid);
 						String ver = installed ? getInstalledVersion(suite, vendor, uid) : null;
 						
@@ -647,7 +651,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								f.append(s);
 							}
 							
-							if(symbian3 || symbianPatch93) {
+							if(symbian3 || symbianPatch93Loaded) {
 								s = new StringItem(null, L[Launch], Item.BUTTON);
 								s.setDefaultCommand(launchCmd);
 								s.setItemCommandListener(CatalogApp.this);
@@ -656,7 +660,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 								f.append(s);
 							}
 							
-							if(!symbianPatch93 && type == 0) {
+							if(!symbianPatch93Loaded && type == 0) {
 								s = new StringItem(null, L[Uninstall], Item.BUTTON);
 								s.setDefaultCommand(uninstallCmd);
 								s.setItemCommandListener(CatalogApp.this);
@@ -671,7 +675,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							f.append(s);
 							
 							if(appUrl != null) {
-								s = new StringItem(null, L[symbianPatch ? Install : Download], Item.BUTTON);
+								s = new StringItem(null, L[symbianPatchLoaded ? Install : Download], Item.BUTTON);
 								s.setDefaultCommand(dlCmd);
 								s.setItemCommandListener(CatalogApp.this);
 								s.setFont(Font.getDefaultFont());
@@ -694,7 +698,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 							f.append(s);
 						}
 						
-						if((type == 0 && launchSupported && !symbianPatch93) || (type == 1 && symbianPatch93)) {
+						if((type == 0 && launchSupported && !symbianPatch93Loaded) || (type == 1 && symbianPatch93Loaded)) {
 							s = new StringItem(null, L[Launch], Item.BUTTON);
 							s.setDefaultCommand(launchCmd);
 							s.setItemCommandListener(CatalogApp.this);
@@ -820,7 +824,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						a.setTimeout(3000);
 						display(a);
 						Thread.sleep(2000);
-						if(symbianPatch) {
+						if(symbianPatchLoaded) {
 							InstallerExtension.installApp(url);
 						} else {
 							platformRequest(url);
@@ -845,11 +849,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 
 	private static void afterStart() {
-		if(!symbianJrt || symbianPatch || symbianPatch93 || warnShown) return;
+		if(!symbianJrt || symbianPatchLoaded || symbianPatch93Loaded || warnShown) return;
 		warnShown = true;
 		Alert a = new Alert("");
 		a.setType(AlertType.INFO);
-		a.setString(L[Symbian3ExtensionAlert]);
+		a.setString(L[!symbianPatchLoaded && !symbianPatch93Loaded && symbianPatchClassFound ? 
+				SymbianPatchOutdatedAlert : Symbian3ExtensionAlert]);
 		a.setCommandListener(midlet);
 		a.addCommand(cancelCmd);
 		a.addCommand(installExtCmd);
@@ -857,7 +862,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	private static void refresh() {
-		if(catalogList == null || appLaunchInfo == null || !symbianPatch) return;
+		if(catalogList == null || appLaunchInfo == null || !symbianPatchLoaded) return;
 		int i = -1;
 		int l = catalog.size();
 		List list = catalogList;
@@ -868,7 +873,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					continue;
 				String name = app.has("name") ? app.getString("name") : app.getString("suite");
 				String v;
-				if(symbianPatch && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
+				if(symbianPatchLoaded && (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
 					name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 				}
 				list.set(i, name, list.getImage(i));
@@ -928,7 +933,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static boolean isAppInstalled(String suite, String vendor, String uid) {
 		try {
-			if(symbianPatch93) {
+			if(symbianPatch93Loaded) {
 				return InstallerExtension_93.isInstalled(suite, vendor, uid);
 			}
 			if(suite == null) { // native app TODO
@@ -944,7 +949,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static String getInstalledVersion(String suite, String vendor, String uid) {
 		try {
-			if(symbianPatch93) {
+			if(symbianPatch93Loaded) {
 				return InstallerExtension_93.getVersion(suite, vendor, uid);
 			}
 			if(suite == null) { // native app
@@ -962,7 +967,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private void launchApp() throws Exception {
 		stat(STAT_LAUNCH, appLaunchInfo[3]);
-		if(symbianPatch93) {
+		if(symbianPatch93Loaded) {
 			// TEST
 			try {
 				InstallerExtension_93.launchApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
