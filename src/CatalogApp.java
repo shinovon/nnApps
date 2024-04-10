@@ -241,16 +241,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				if(symbianJrt) {
 					if(symbianJrt1) {
 						Class.forName("ru.nnproject.installerext.InstallerExtension_93");
-						System.out.println("ext 93 found");
 						symbianPatchClassFound = true;
-						symbianPatch93Loaded = InstallerExtension_93.getVersion() < 1;
+						System.out.println("ext 93 found");
+						symbianPatch93Loaded = InstallerExtension_93.getVersion() > 0;
 					} else {
 						Class.forName("ru.nnproject.installerext.InstallerExtension");
 						symbianPatchClassFound = true;
 						System.out.println("ext found");
 						InstallerExtension.init();
 						// если метода нет, то упадет эррор и все равно будет считаться что патч устарел
-						symbianPatchLoaded = InstallerExtension.getVersion() < 1;
+						symbianPatchLoaded = InstallerExtension.getVersion() > 0;
 					}
 				}
 				s60 = s60();
