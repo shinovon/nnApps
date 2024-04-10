@@ -851,6 +851,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static void afterStart() {
 		if(!symbianJrt || symbianPatchLoaded || symbianPatch93Loaded || warnShown) return;
 		warnShown = true;
+		
+		if(symbianJrt && platform.indexOf("=1.0.2") != -1) // n96 is not supported because of armv5
+			return;
+		
 		Alert a = new Alert("");
 		a.setType(AlertType.INFO);
 		a.setString(L[!symbianPatchLoaded && !symbianPatch93Loaded && symbianPatchClassFound ? 
@@ -936,8 +940,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			if(symbianPatch93Loaded) {
 				return InstallerExtension_93.isInstalled(suite, vendor, uid);
 			}
-			if(suite == null) { // native app TODO
-//				return false;
+			if(suite == null) { // native app
 				return InstallerExtension.isInstalled(null, vendor, uid);
 			}
 			return InstallerExtension.isInstalled(suite, vendor, null);
@@ -949,11 +952,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static String getInstalledVersion(String suite, String vendor, String uid) {
 		try {
+			// TODO sid?
 			if(symbianPatch93Loaded) {
-				return InstallerExtension_93.getVersion(suite, vendor, uid);
+				if(suite == null) {
+					return InstallerExtension_93.getSisVersion(uid);
+				}
+				return InstallerExtension_93.getMIDletVersion(suite, vendor, uid);
 			}
 			if(suite == null) { // native app
-				return InstallerExtension.getVersion(null, vendor, uid);
+				return InstallerExtension.getSisVersion(uid);
 			}
 			String s = InstallerExtension.getVersion(suite, vendor, null);
 			if(s != null && s.indexOf('.') == s.lastIndexOf('.'))
@@ -968,8 +975,8 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private void launchApp() throws Exception {
 		stat(STAT_LAUNCH, appLaunchInfo[3]);
 		if(symbianPatch93Loaded) {
-			// TEST
 			try {
+				// TODO 93 args
 				InstallerExtension_93.launchApp(appLaunchInfo[0], appLaunchInfo[1], appLaunchInfo[2]);
 			} catch (Error e) {
 				e.printStackTrace();
