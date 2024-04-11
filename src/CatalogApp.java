@@ -36,7 +36,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	
 	private static final String URL = "http://nnp.nnchan.ru/nns/";
 	private static final String EXTSIS_URL = URL + "nninstallerext.sis";
-	private static final String EXTSIS93_URL = URL + "nnstoreext93.sis";
+	private static final String EXTSIS93_URL = URL + "nnstoreext93.zip";
 	
 	private static final int RUN_CATALOG = 1;
 	private static final int RUN_CATALOG_ICONS = 2;
@@ -231,10 +231,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				platform = plat;
 				symbianJrt = plat.indexOf("platform=S60") != -1;
 				if(!(symbianJrt1 = symbianJrt && plat.indexOf("java_build_version=1") != -1))
-					symbian3 = symbianJrt && plat.indexOf("java_build_version=2") != -1; 
-				if(!(launchSupported = plat.toLowerCase().startsWith("nokia"))) {
+					symbian3 = symbianJrt && plat.indexOf("java_build_version=2") != -1;
+				if(!(launchSupported = plat.toLowerCase().startsWith("nokia"))) { // TODO
 					try {
-						Class.forName("javax.microedition.shell.MicroActivity"); // j2me loader check
+						// j2me loader check
+						Class.forName("javax.microedition.shell.MicroActivity");
 						j2meloader = launchSupported = true;
 					} catch (Exception e) {}
 				}
@@ -253,12 +254,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						symbianPatchLoaded = InstallerExtension.getVersion() > 0;
 					}
 				}
-				s60 = s60();
-				s40 = s40();
 			}
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
+		s60 = s60();
+		s40 = s40();
 		// 
 		int p;
 		if((p = display.getBestImageHeight(Display.LIST_ELEMENT)) <= 0)
@@ -349,8 +350,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if(c == installExtCmd) {
 			try {
 				display(rootScreen);
-				if(platformRequest(symbian3 ? EXTSIS_URL : EXTSIS93_URL))
-					notifyDestroyed();
+				platformRequest(symbian3 ? EXTSIS_URL : EXTSIS93_URL);
+				// force exit after 2 secs to make patch installation safe
+				Thread.sleep(2000);
+				notifyDestroyed();
 			} catch (Exception e) {}
 			return;
 		}
@@ -1010,7 +1013,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				platformRequest(LOCALAPP_URL +
 						"name=" + url(appLaunchInfo[0]) +
 						"&vendor=" + url(appLaunchInfo[1]) +
-						"&id=" + url(appLaunchInfo[3]) +
 						"&id=" + url(appLaunchInfo[3]) +
 						"&from=nnstore"
 						);

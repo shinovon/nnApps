@@ -18,6 +18,8 @@ public class InstallerExtension {
 	private static final int VERSION = 1;
 	
 	private static InstallerExtension instance;
+
+	private static boolean init;
 	
 	static {
 		Jvm.loadSystemLibrary("nninstallerext");
@@ -30,7 +32,7 @@ public class InstallerExtension {
 	}
 
 	public static boolean isInstalled(String suiteName, String vendorName, String uid) {
-		checkAccess();
+		if(!init) throw new IllegalStateException();
 		InstallerExtension inst = getInstance();
 		inst.open();
 		try {
@@ -45,7 +47,7 @@ public class InstallerExtension {
 	}
 
 	public static String getVersion(String suiteName, String vendorName, String uid) {
-		checkAccess();
+		if(!init) throw new IllegalStateException();
 		if (suiteName == null && uid != null) {
 			return getSisVersion(uid);
 		}
@@ -69,7 +71,7 @@ public class InstallerExtension {
 	}
 
 	public static String getUid(String suiteName, String vendorName, String uid) {
-		checkAccess();
+		if(!init) throw new IllegalStateException();
 		SuiteInfo suiteInfo = new SuiteInfo(suiteName, vendorName);
 		if (uid != null) {
 			suiteInfo.setUid(PlatformUid.createUid(uid));
@@ -85,7 +87,7 @@ public class InstallerExtension {
 	}
 
 	public static int removeApp(String suiteName, String vendorName, String uid) {
-		checkAccess();
+		if(!init) throw new IllegalStateException();
 		SuiteInfo suiteInfo = new SuiteInfo(suiteName, vendorName);
 		if (uid != null) {
 			suiteInfo.setUid(PlatformUid.createUid(uid));
@@ -103,23 +105,20 @@ public class InstallerExtension {
 	}
 
 	public static int installApp(String url) {
-		checkAccess();
+		if(!init) throw new IllegalStateException();
 		InstallerExtension inst = getInstance();
 		return inst._launchJavaInstaller(new String[] { "install", "-ja" + (url.endsWith("jad") ? "d" : "r") + "=" + url });
 	}
 	
 	public static void init() {
-		checkAccess();
+		ApplicationInfo app = ApplicationInfo.getInstance();
+		if (!"nnhub".equals(app.getSuiteName()) || !"nnproject".equals(app.getVendor()))
+			throw new RuntimeException("asd");
+		init = true;
 		InfoInvoker1.setProtectionDomain("Manufacturer", "MFD");
 	}
 	
 	// Private methods
-
-	private static void checkAccess() {
-		ApplicationInfo app = ApplicationInfo.getInstance();
-		if (!"nnhub".equals(app.getSuiteName()) || !"nnproject".equals(app.getVendor()))
-			throw new RuntimeException("asd");
-	}
 	
 	private static InstallerExtension getInstance() {
 		InstallerExtension inst = instance;
