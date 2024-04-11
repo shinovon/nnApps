@@ -264,11 +264,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if((p = display.getBestImageHeight(Display.LIST_ELEMENT)) <= 0)
 			p = 48;
 		listImgHeight = p;
-		if(checkLaunch()) integrationStart();
 		start(RUN_CHECK);
 	}
 
-	private void integrationStart() {
+	private boolean integrationStart() {
 		Hashtable t = parseArgs(getLaunchCommand());
 		String s;
 		if((s = (String) t.get("app")) != null) {
@@ -278,8 +277,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			f.setCommandListener(this);
 			display(loadingAlert(L[Loading]), f);
 			start(RUN_APP);
-			return;
+			return true;
 		}
+		return false;
 	}
 
 	public void commandAction(Command c, Displayable d) {
@@ -835,12 +835,12 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						}
 						Thread.sleep(1000);
 						notifyDestroyed();
-					} else {
-						start(RUN_CATEGORIES);
+					} else if(checkLaunch() && !integrationStart()) {
+						run(RUN_CATEGORIES);
 					}
 				} catch (Exception e) {
 					display(warningAlert(L[NetworkError].concat(" \n\ndetails: ").concat(e.toString())));
-					start(RUN_EXIT_TIMEOUT);
+					run(RUN_EXIT_TIMEOUT);
 				}
 				return;
 			}
@@ -898,6 +898,15 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				new Thread(this).start();
 				wait();
 			}
+		} catch (Exception e) {}
+	}
+
+	private void run(int i) {
+		try {
+			synchronized(this) {
+				run = i;
+			}
+			run();
 		} catch (Exception e) {}
 	}
 	
