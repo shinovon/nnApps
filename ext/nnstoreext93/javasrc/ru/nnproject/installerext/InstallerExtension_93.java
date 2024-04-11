@@ -29,8 +29,11 @@ public class InstallerExtension_93 {
 	
 	public static String getMIDletVersion(String suite, String vendor, String uid) {
 		int[] res = new int[3];
-		if(_getInstalledVersion(getUid(suite, vendor, null), res) < 0) {
-			return null;
+		int i = getUid(suite, vendor, null);
+		if(i == 0) return null;
+		i = _getInstalledVersion(i, res);
+		if(i < 0) {
+			throw new RuntimeException("Native error: " + i);
 		}
 		return res[0] + "." + res[1] + "." + res[2];
 	}
@@ -51,9 +54,6 @@ public class InstallerExtension_93 {
 	}
 	
 	public static void removeApp(String suite, String vendor, String uid) {
-		if(uid == null) {
-			throw new IllegalArgumentException("UID has to be set");
-		}
 		throw new IllegalStateException("Not supported");
 	}
 	

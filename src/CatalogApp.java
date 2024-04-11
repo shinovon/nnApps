@@ -835,12 +835,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						}
 						Thread.sleep(1000);
 						notifyDestroyed();
-					} else if(checkLaunch() && !integrationStart()) {
-						run(RUN_CATEGORIES);
+					} else if(!checkLaunch() || !integrationStart()) {
+//						run(RUN_CATEGORIES);
+						start(RUN_CATEGORIES);
 					}
 				} catch (Exception e) {
 					display(warningAlert(L[NetworkError].concat(" \n\ndetails: ").concat(e.toString())));
-					run(RUN_EXIT_TIMEOUT);
+//					run(RUN_EXIT_TIMEOUT);
+					start(RUN_EXIT_TIMEOUT);
 				}
 				return;
 			}
@@ -901,14 +903,14 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		} catch (Exception e) {}
 	}
 
-	private void run(int i) {
-		try {
-			synchronized(this) {
-				run = i;
-			}
-			run();
-		} catch (Exception e) {}
-	}
+//	private void run(int i) {
+//		try {
+//			synchronized(this) {
+//				run = i;
+//			}
+//			run();
+//		} catch (Exception e) {}
+//	}
 	
 	private static void display(Alert a, Displayable d) {
 		if(d == null) {

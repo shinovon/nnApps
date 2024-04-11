@@ -169,8 +169,9 @@ JNIEXPORT jint JNICALL Java_ru_nnproject_installerext_InstallerExtension_193__1g
 	CJavaRegistryPackageEntry* entry = NULL;
 	while(idx < count) {
 		TUid uid = uids[idx];
-		TRAPD(ret, entry = (CJavaRegistryPackageEntry*) registry->RegistryEntryL(uid));
-		if(ret != KErrNone) {
+		TRAPD(err, entry = (CJavaRegistryPackageEntry*) registry->RegistryEntryL(uid));
+		if(err != KErrNone) {
+			ret = err;
 			break;
 		}
 		if(*name == entry->Name() && *vendor == entry->Vendor()) {

@@ -27,14 +27,6 @@ JNIEXPORT jint JNICALL Java_ru_nnproject_installerext_InstallerExtension__1getIn
 
 /*
  * Class:     ru_nnproject_installerext_InstallerExtension
- * Method:    _uninstallNativeApp
- * Signature: (I)I
- */
-JNIEXPORT jint JNICALL Java_ru_nnproject_installerext_InstallerExtension__1uninstallNativeApp
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:     ru_nnproject_installerext_InstallerExtension
  * Method:    _launchJavaInstaller
  * Signature: ([Ljava/lang/String;)I
  */
