@@ -832,7 +832,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						display(a);
 						Thread.sleep(2000);
 						if(symbianPatchLoaded) {
-							// TODO ?
 							InstallerExtension.installApp(url);
 						} else {
 							platformRequest(url);
