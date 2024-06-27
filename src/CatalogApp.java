@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2024 Arman Jussupgaliyev
+ */
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -311,11 +314,16 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		if(c == backCmd) {
 			if(d == settingsForm) { // save settings
 				lang = langChoice.getSelectedIndex() == 1 ? "en" : "ru";
+				
+				try {
+					RecordStore.deleteRecordStore(SETTINGS_RECORDNAME);
+				} catch (Exception e) {}
 				try {
 					JSONObject j = new JSONObject();
 					j.put("lang", lang);
 					j.put("v", SETTINGSV);
 					byte[] b = j.toString().getBytes("UTF-8");
+					
 					RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, true);
 					if(r.getNumRecords() > 0) {
 						r.setRecord(1, b, 0, b.length);
