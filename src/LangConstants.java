@@ -37,4 +37,6 @@ public interface LangConstants {
 	static final int Installed = 36;
 	static final int LatestVersionInstalled = 37;
 	static final int SymbianPatchOutdatedAlert = 38;
+	static final int ExtensionInstallationNotice = 39;
+	static final int Ok = 40;
 }

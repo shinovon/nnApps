@@ -15,8 +15,8 @@
 "G:\j2me_workspace\nnApps\ext\nninstallerext.odc"-"c:\resource\java\jvm\lib\jrt\nninstallerext.odc"
 "$(EPOCROOT)Epoc32\release\$(PLATFORM)\$(TARGET)\nninstallerext.dll"-"c:\sys\bin\nninstallerext.dll"
 ; auto installer
-"g:/Progs/QtSDK/Symbian/SDKs/SymbianSR1Qt474/epoc32/data/z/resource/apps/javaextinstaller.rsc" - "c:\resource\apps\javaextinstaller.rsc"
-"g:/Progs/QtSDK/Symbian/SDKs/SymbianSR1Qt474/epoc32/data/z/private/10003a3f/import/apps/javaextinstaller_reg.rsc" - "c:\private\10003a3f\import\apps\javaextinstaller_reg.rsc"
-"G:\Progs\QtSDK\Symbian\SDKs\SymbianSR1Qt474\epoc32\release\armv5\urel\javaextinstaller.exe"-"c:\sys\bin\javaextinstaller.exe", FR, RI
+"g:/Progs/QtSDK/Symbian/SDKs/Symbian3Qt473/epoc32/data/z/resource/apps/javaextinstaller.rsc" - "c:\resource\apps\javaextinstaller.rsc"
+"g:/Progs/QtSDK/Symbian/SDKs/Symbian3Qt473/epoc32/data/z/private/10003a3f/import/apps/javaextinstaller_reg.rsc" - "c:\private\10003a3f\import\apps\javaextinstaller_reg.rsc"
+"G:\Progs\QtSDK\Symbian\SDKs\Symbian3Qt473\epoc32\release\armv5\urel\javaextinstaller.exe"-"c:\sys\bin\javaextinstaller.exe", FR, RI
 
 

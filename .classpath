@@ -3,6 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="res"/>
 	<classpathentry kind="con" path="org.elipse.mtj.JavaMEContainer/Nokia Symbian3 SDK v1.0 /SymbianDevice"/>
-	<classpathentry kind="lib" path="/javainstaller/bin"/>
+	<classpathentry kind="lib" path="ext/nninstallerext.jar"/>
+	<classpathentry kind="lib" path="ext/nnstoreext93.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,5 +1,5 @@
 Nokia-MIDlet-Background-Event: pause
-MIDlet-Version: 0.5.0
+MIDlet-Version: 0.6.0
 MicroEdition-Configuration: CLDC-1.1
 Nokia-MIDlet-Launch-Params: app
 MIDlet-Name: nnhub
