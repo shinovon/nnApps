@@ -1308,6 +1308,10 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					r = checkClass("org.eclipse.ercp.swt.mobile.MobileShell");
 					break;
 				}
+				if("pgl".equals(c)) {
+					r = System.getProperty("org.pigler.api.version") != null || checkClass("org.pigler.api.PiglerAPI");
+					break;
+				}
 			default:
 				if(c.startsWith("s40")) {
 					if(!s40) break;
