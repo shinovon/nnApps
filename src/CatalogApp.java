@@ -1096,6 +1096,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	}
 	
 	static String url(String url) {
+		if (url == null) return "null";
 		StringBuffer sb = new StringBuffer();
 		char[] chars = url.toCharArray();
 		for (int i = 0; i < chars.length; i++) {
