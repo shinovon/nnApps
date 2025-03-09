@@ -188,7 +188,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		
 		// load locale
 		try {
-			(L = new String[50])[0] = "Wunderland Store";
+			(L = new String[50])[0] = "Wunderland";
 			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
 			StringBuffer s = new StringBuffer();
 			int c;
@@ -427,19 +427,13 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
 			
-			s = new StringItem(L[Web], "nnproject.cc", Item.HYPERLINK);
+			s = new StringItem(L[Web], "ovi.wunderland.pl", Item.HYPERLINK);
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
 			f.append(s);
 			
-			s = new StringItem(L[Donate], "boosty.to/nnproject/donate", Item.HYPERLINK);
-			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
-			s.setDefaultCommand(hyperlinkCmd);
-			s.setItemCommandListener(this);
-			f.append(s);
-			
-			s = new StringItem(L[Chat], "t.me/nnmidletschat", Item.HYPERLINK);
+			s = new StringItem(L[Chat], "t.me/wunderlandstore", Item.HYPERLINK);
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
@@ -521,7 +515,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		case RUN_CATALOG: { // load catalog
 			try {
 				String c = category;
-				catalogList = new List(L[0] + " - " + categoriesList.getString(categoriesList.getSelectedIndex()), Choice.IMPLICIT);
+				catalogList = new List(categoriesList.getString(categoriesList.getSelectedIndex()) + " - " + L[0], Choice.IMPLICIT);
 				if(rootScreen == null) {
 					rootScreen = catalogList;
 					catalogList.addCommand(aboutCmd);

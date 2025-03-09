@@ -3,6 +3,5 @@
 bin
 deployed
 build.properties
-.mtj
 /.processed/
 mtj-build
