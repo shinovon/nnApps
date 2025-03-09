@@ -37,7 +37,7 @@ import ru.nnproject.installerext.InstallerExtension_93;
 
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
 	
-	private static final String URL = "http://nnproject.cc/nns/";
+	private static final String URL = "http://ovi.wunderwungiel.pl/nns/";
 	private static final String EXTSIS_URL = URL + "nninstallerext.sis";
 	private static final String EXTSIS93_URL = URL + "nnstoreext93.zip";
 	
@@ -60,7 +60,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 	private static final String APIV = "&v=2";
 	private static final int SETTINGSV = 1;
 
-	private static final String SETTINGS_RECORDNAME = "nnappssets";
+	private static final String SETTINGS_RECORDNAME = "nnapps2sets";
 	
 	private static final String JAVAAPP_PROTOCOL = "localapp://jam/launch?";
 	private static final String LOCALAPP_URL = URL + "localapp.php?";
@@ -163,9 +163,9 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		version = getAppProperty("MIDlet-Version");
 		
 		// защита 292 уровня
-		if(!"nnhub".equals(getAppProperty("MIDlet-Name")) ||
-				!"nnproject".equals(getAppProperty("MIDlet-Vendor")))
-			throw new RuntimeException();
+//		if(!"nnhub".equals(getAppProperty("MIDlet-Name")) ||
+//				!"nnproject".equals(getAppProperty("MIDlet-Vendor")))
+//			throw new RuntimeException();
 		
 		// check system locale
 		try {
@@ -188,7 +188,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		
 		// load locale
 		try {
-			(L = new String[50])[0] = "nnhub";
+			(L = new String[50])[0] = "Wunderland Store";
 			InputStreamReader r = new InputStreamReader("".getClass().getResourceAsStream("/" + lang), "UTF-8");
 			StringBuffer s = new StringBuffer();
 			int c;
@@ -427,7 +427,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
 			
-			s = new StringItem(L[Web], "nnp.nnchan.ru", Item.HYPERLINK);
+			s = new StringItem(L[Web], "nnproject.cc", Item.HYPERLINK);
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
@@ -443,11 +443,6 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			s.setDefaultCommand(hyperlinkCmd);
 			s.setItemCommandListener(this);
-			f.append(s);
-			
-			s = new StringItem(null, "\n\n292 labs");
-			s.setFont(Font.getDefaultFont());
-			s.setLayout(Item.LAYOUT_NEWLINE_BEFORE | Item.LAYOUT_NEWLINE_AFTER | Item.LAYOUT_LEFT);
 			f.append(s);
 			
 			s = new StringItem(null, "\nBuild info: \n" +
@@ -866,7 +861,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		case RUN_CHECK: { // проверка обновлений и стата
 			if(statType == null) {
 				try {
-					JSONObject j = getObject(getUtf(URL + "check.php?t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform) + "&s=" + url(getLaunchSource())
+					JSONObject j = getObject(getUtf("http://nnp.nnchan.ru/nns/check.php?m=wunder&t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform) + "&s=" + url(getLaunchSource())
 					));
 					if(j.getBoolean("update_available", false)) {
 						String url = j.getString("download_url");
@@ -890,6 +885,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						start(RUN_CATEGORIES);
 					}
 				} catch (Exception e) {
+					e.printStackTrace();
 					display(warningAlert(L[NetworkError].concat(" \n\ndetails: ").concat(e.toString())));
 //					run(RUN_EXIT_TIMEOUT);
 					start(RUN_EXIT_TIMEOUT);
@@ -897,7 +893,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 				return;
 			}
 			try {
-				getUtf(URL + "check.php?t=" + url(statType) + "&a=" + statApp + "&lang=" + lang + "&v=" + version + "&p=" + url(platform));
+				getUtf(URL + "check.php?m=wunder&t=" + url(statType) + "&a=" + statApp + "&lang=" + lang + "&v=" + version + "&p=" + url(platform));
 			} catch (Exception e) {}
 			return;
 		}
