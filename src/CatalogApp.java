@@ -38,8 +38,9 @@ import ru.nnproject.installerext.InstallerExtension_93;
 public class CatalogApp extends MIDlet implements CommandListener, ItemCommandListener, Runnable, LangConstants {
 	
 	private static final String URL = "http://ovi.wunderwungiel.pl/nns/";
-	private static final String EXTSIS_URL = URL + "nninstallerext.sis";
-	private static final String EXTSIS93_URL = URL + "nnstoreext93.zip";
+	private static final String NNP_URL = "http://nnp.nnchan.ru/nns/";
+	private static final String EXTSIS_URL = NNP_URL + "nninstallerext.sis";
+	private static final String EXTSIS93_URL = NNP_URL + "nnstoreext93.zip";
 	
 	private static final int RUN_CATALOG = 1;
 	private static final int RUN_CATALOG_ICONS = 2;
@@ -256,7 +257,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						Class.forName("ru.nnproject.installerext.InstallerExtension_93");
 						symbianPatchClassFound = true;
 						System.out.println("ext 93 found");
-						symbianPatch93Loaded = InstallerExtension_93.getVersion() > 0;
+						symbianPatch93Loaded = InstallerExtension_93.getVersion() >= 2;
 						InstallerExtension_93.init();
 					} else {
 						Class.forName("ru.nnproject.installerext.InstallerExtension");
@@ -264,7 +265,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						System.out.println("ext found");
 						InstallerExtension.init();
 						// если метода нет, то упадет эррор и все равно будет считаться что патч устарел
-						symbianPatchLoaded = InstallerExtension.getVersion() > 0;
+						symbianPatchLoaded = InstallerExtension.getVersion() >= 1;
 					}
 				}
 			}
@@ -541,7 +542,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					String v;
 					if(symbianPatchLoaded || symbianPatch93Loaded) {
 						if((v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
-							name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
+							name += app.has("last") && !compareVersions(app.getString("last"), v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 						}
 					}
 //					else if(symbianPatch93 && isAppInstalled(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) {
@@ -662,7 +663,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 						if(type == 3) installed = ver != null;
 						
 						if(installed) {
-							boolean needUpdate = last != null && !last.equals(ver);
+							boolean needUpdate = last != null && !compareVersions(last, ver);
 							
 							if(needUpdate) {
 								s = new StringItem(null, "\n" + L[LatestVersion] + ": " + last + "\n");
@@ -855,7 +856,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		case RUN_CHECK: { // проверка обновлений и стата
 			if(statType == null) {
 				try {
-					JSONObject j = getObject(getUtf("http://nnp.nnchan.ru/nns/check.php?m=wunder&t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform) + "&s=" + url(getLaunchSource())
+					JSONObject j = getObject(getUtf(NNP_URL + "check.php?m=wunder&t=0&lang=" + lang + "&v=" + version + "&p=" + url(platform) + "&s=" + url(getLaunchSource())
 					));
 					if(j.getBoolean("update_available", false)) {
 						String url = j.getString("download_url");
@@ -892,6 +893,30 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 			return;
 		}
 		}
+	}
+	
+	private static String convertVersion(String s) {
+		int i, j;
+		int a, b, c;
+		if ((i = s.indexOf('.')) == -1) {
+			return Integer.parseInt(s) + ".0.0";
+		}
+		a = Integer.parseInt(s.substring(0, i));
+		if ((j = s.indexOf('(')) != -1) {
+			c = Integer.parseInt(s.substring(j + 1, s.indexOf(')')));
+		} else if ((j = s.indexOf('.', i + 1)) == -1) {
+			return a + "." + Integer.parseInt(s.substring(i + 1)) + ".0";
+		} else {
+			c = Integer.parseInt(s.substring(j + 1));
+		}
+		b = Integer.parseInt(s.substring(i + 1, j));
+		return a + "." + b + "." + c;
+	}
+
+	private static boolean compareVersions(String a, String b) {
+		if (a == b) return true;
+		if (a == null || b == null) return false;
+		return a.equals(b) || convertVersion(a).equals(convertVersion(b));
 	}
 
 	private static void afterStart() {
