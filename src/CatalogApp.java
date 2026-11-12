@@ -336,11 +336,11 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					byte[] b = j.toString().getBytes("UTF-8");
 					
 					RecordStore r = RecordStore.openRecordStore(SETTINGS_RECORDNAME, true);
-					if (r.getNumRecords() > 0) {
-						r.setRecord(1, b, 0, b.length);
-					} else {
+//					if (r.getNumRecords() > 0) {
+//						r.setRecord(1, b, 0, b.length);
+//					} else {
 						r.addRecord(b, 0, b.length);
-					}
+//					}
 					r.closeRecordStore();
 				} catch (Exception e) {
 				}
@@ -930,7 +930,7 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 					continue;
 				String name = app.has("name") ? app.getString("name") : app.getString("suite");
 				String v;
-				if ((symbianPatchLoaded || symbianext)
+				if ((symbianPatchLoaded /*|| symbianext*/)
 					&& (v = getInstalledVersion(app.getString("suite"), app.getString("vendor"), app.getNullableString("uid"))) != null) {
 					name += app.has("last") && !app.getString("last").equals(v) ? "\n" + L[updateAvailable] : "\n" + L[installed];
 				}
