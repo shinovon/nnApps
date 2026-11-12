@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2024 Arman Jussupgaliyev
+/*
+ * Copyright (c) 2024-2026 Arman Jussupgaliyev
  */
 import java.io.IOException;
 import java.io.InputStream;
