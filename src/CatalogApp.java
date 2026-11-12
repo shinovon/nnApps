@@ -1050,9 +1050,18 @@ public class CatalogApp extends MIDlet implements CommandListener, ItemCommandLi
 		stat(STAT_LAUNCH, appLaunchInfo[3]);
 		if (symbianext) {
 			if (appLaunchInfo[0] == null) {
-				System.getProperty("cc.nnproject.symbianext.launchApp:" + appLaunchInfo[2]);
+				if ("true".equals(System.getProperty("cc.nnproject.symbianext.isAppRunning:" + appLaunchInfo[2]))) {
+					System.getProperty("cc.nnproject.symbianext.bringAppToForeground:" + appLaunchInfo[2]);
+				} else {
+					System.getProperty("cc.nnproject.symbianext.launchApp:" + appLaunchInfo[2]);
+				}
 			} else {
-				System.getProperty("cc.nnproject.symbianext.launchMidlet:" + appLaunchInfo[0] + ';' + appLaunchInfo[1]);
+				String uid = System.getProperty("cc.nnproject.symbianext.getMidletUid:" + appLaunchInfo[0] + ';' + appLaunchInfo[1]);
+				if ("true".equals(System.getProperty("cc.nnproject.symbianext.isAppRunning:" + uid))) {
+					System.getProperty("cc.nnproject.symbianext.bringAppToForeground:" + uid);
+				} else {
+					System.getProperty("cc.nnproject.symbianext.launchMidlet:" + appLaunchInfo[0] + ';' + appLaunchInfo[1] + ";1;-Dlaunchfrom=nnstore");
+				}
 			}
 			return;
 		}
